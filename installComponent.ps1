@@ -243,11 +243,16 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
     Invoke-RestMethod "https://github.com/zznty/ForgeWrapper/releases/latest/download/$wrapper" -OutFile $wrapper
 
     $clientPath = Get-ChildItem libraries -Recurse -Filter "minecraft-*-client.jar"
-    $classPath = Get-ChildItem libraries -Recurse -Filter "*.jar"
+    
+    $classPath = $profileJson.classPath + $installerLibPaths
 
     $classPathSeparator = $IsWindows ? ";" : ":"
     
     java "-Dforgewrapper.librariesDir=libraries" "-Dforgewrapper.installer=$($installerLibPaths[0])" "-Dforgewrapper.minecraft=$clientPath" -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" ($profileJson.clientArgs -join " ")
+
+    if ($LastExitCode -ne 0) {
+        exit $LastExitCode
+    }
     
     Remove-Item $wrapper -Force
 }
