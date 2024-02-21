@@ -26,14 +26,14 @@ jobs:
               id: meta
               shell: pwsh
               run: |
-                $version = ./componentsIndex.ps1 ${{ matrix.component }} -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
                 "version=$version" >> $env:GITHUB_OUTPUT
 
             - name: Get version suffix
               id: suffix
               shell: pwsh
               run: |
-                $value = ${{ matrix.component }} -eq 'net.minecraftforge' ? 'forge' : 'fabric'
+                $value = "${{ matrix.component }}" -eq "net.minecraftforge" ? "forge" : "fabric"
                 "value=$value" >> $env:GITHUB_OUTPUT
 
             - name: Get Mirror Component Version
@@ -55,8 +55,8 @@ jobs:
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
               working-directory: component
               run: |
-                mv profile.json ${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json
-                7z a -sdel ${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip libraries/ mods/ natives/
+                mv "profile.json" "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json"
+                7z a -sdel "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip" libraries/ mods/ natives/
             
             - name: Upload profile
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}

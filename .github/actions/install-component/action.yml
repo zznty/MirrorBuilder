@@ -31,7 +31,7 @@ runs:
       shell: pwsh
       working-directory: component
       run: |
-        ../installComponent.ps1 ${{ inputs.uid }} ${{ inputs.version }}
+        ../installComponent.ps1 "${{ inputs.uid }}" "${{ inputs.version }}"
 
     - name: Get latest Fabric Loader version
       if: ${{ inputs.uid == 'net.fabricmc.intermediary' }}
@@ -45,4 +45,4 @@ runs:
       shell: pwsh
       working-directory: component
       run: |
-        ../installComponent.ps1 net.fabricmc.fabric-loader ${{ steps.fabric-loader.outputs.version }}
+        ../installComponent.ps1 "net.fabricmc.fabric-loader" "${{ steps.fabric-loader.outputs.version }}"
