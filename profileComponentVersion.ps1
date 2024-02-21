@@ -13,6 +13,11 @@ param (
     $MirrorUrl
 )
 
-$profileJson = Invoke-RestMethod -Uri "$MirrorUrl/clients/$VersionName.json" 
+try {
+    $profileJson = Invoke-RestMethod -Uri "$MirrorUrl/clients/$VersionName.json"
+}
+catch {
+    return "0.0.0"
+}
 
 $profileJson."+components" | Where-Object { $_.uid -eq $ComponentUid } | Select-Object -ExpandProperty version -First 1

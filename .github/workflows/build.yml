@@ -39,7 +39,6 @@ jobs:
             - name: Get Mirror Component Version
               id: mirror
               shell: pwsh
-              continue-on-error: true
               run: |
                 $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" "${{ matrix.component }}" "${{ secrets.MIRROR_URL }}"
                 "version=$version" >> $env:GITHUB_OUTPUT
