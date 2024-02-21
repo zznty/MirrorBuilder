@@ -1,0 +1,66 @@
+on:
+    workflow_dispatch:
+
+env:
+  LAUNCHER_VERSION: 5.5.x
+
+jobs:
+    build-client-forge:
+        runs-on: ubuntu-latest
+        name: Build Client
+        strategy:
+            matrix:
+                version: ["1.7.10", "1.12.2", "1.16.5", "1.92.2", "1.19.4", "1.20.1"]
+                component: ["net.minecraftforge", "net.fabricmc.intermediary"]
+                exclude:
+                  - version: "1.7.10"
+                    component: "net.fabricmc.intermediary"
+                  - version: "1.12.2"
+                    component: "net.fabricmc.intermediary"
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Get Latest Component Version
+              id: meta
+              shell: pwsh
+              run: |
+                $version = ./componentsIndex.ps1 ${{ matrix.component }} -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                "version=$version" >> $env:GITHUB_OUTPUT
+
+            - name: Get version suffix
+              id: suffix
+              shell: pwsh
+              run: |
+                $value = ${{ matrix.component }} -eq 'net.minecraftforge' ? 'forge' : 'fabric'
+                "value=$value" >> $env:GITHUB_OUTPUT
+
+            - name: Get Mirror Component Version
+              id: mirror
+              shell: pwsh
+              continue-on-error: true
+              run: |
+                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" "${{ matrix.component }}" "${{ secrets.MIRROR_URL }}"
+                "version=$version" >> $env:GITHUB_OUTPUT
+            
+            - name: Install Component
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              uses: ./.github/actions/install-component
+              with:
+                uid: ${{ matrix.component }}
+                version: ${{ steps.meta.outputs.version }}
+            
+            - name: Build files to upload
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              working-directory: component
+              run: |
+                mv profile.json ${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json
+                7z a -sdel ${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip libraries/ mods/ natives/
+            
+            - name: Upload profile
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              working-directory: component
+              run: aws s3 --endpoint-url=${{ secrets.S3_ENDPOINT }} sync . s3//${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/
+              env:
+                AWS_ACCESS_KEY_ID: ${{ secrets.S3_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_KEY }}
+                AWS_DEFAULT_REGION: ru-central1

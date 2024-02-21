@@ -1,0 +1,48 @@
+name: Installs Component by uid and version
+
+inputs:
+  uid:
+    description: Component uid
+    required: true
+  
+  version:
+    description: Component version
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-java@v4
+      name: Setup Java 17
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+            
+    - name: Install PSCompression
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module PSCompression
+
+    - name: Create component directory
+      run: mkdir component
+    
+    - name: Install Component
+      shell: pwsh
+      working-directory: component
+      run: |
+        ../installComponent.ps1 ${{ inputs.uid }} ${{ inputs.version }}
+
+    - name: Get latest Fabric Loader version
+      if: ${{ inputs.uid == 'net.fabricmc.intermediary' }}
+      id: fabric-loader
+      shell: pwsh
+      run: |
+        "version=$(./componentsIndex.ps1 'net.fabricmc.fabric-loader')" >> $env:GITHUB_OUTPUT
+
+    - name: Install Fabric Loader
+      if: ${{ inputs.uid == 'net.fabricmc.intermediary' }}
+      shell: pwsh
+      working-directory: component
+      run: |
+        ../installComponent.ps1 net.fabricmc.fabric-loader ${{ steps.fabric-loader.outputs.version }}
