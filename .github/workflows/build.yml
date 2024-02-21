@@ -60,7 +60,7 @@ jobs:
             - name: Upload profile
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
               working-directory: component
-              run: aws s3 --endpoint-url=${{ secrets.S3_ENDPOINT }} sync . s3//${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/
+              run: aws s3 --endpoint-url=${{ secrets.S3_ENDPOINT }} sync . s3://${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/
               env:
                 AWS_ACCESS_KEY_ID: ${{ secrets.S3_KEY_ID }}
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_KEY }}
