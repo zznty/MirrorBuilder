@@ -91,7 +91,7 @@ function Get-Library {
         $library | Add-Member "url" "https://libraries.minecraft.net/"
     }
 
-    $url = $library.downloads.artifact.url ?? "$($library.url)$filePath"
+    $url = $library.downloads.artifact.url ?? "$($library.url.TrimEnd("/"))/$filePath"
 
     if ($library.natives) {
         Get-NativeLibraries $library
