@@ -4,6 +4,8 @@ on:
 env:
   LAUNCHER_VERSION: 5.5.x
 
+name: Build Mirror Clients
+
 jobs:
     build-client-forge:
         runs-on: ubuntu-latest
