@@ -244,8 +244,10 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     $clientPath = Get-ChildItem libraries -Recurse -Filter "minecraft-*-client.jar"
     $classPath = Get-ChildItem libraries -Recurse -Filter "*.jar"
+
+    $classPathSeparator = $IsWindows ? ";" : ":"
     
-    java "-Dforgewrapper.librariesDir=libraries" "-Dforgewrapper.installer=$($installerLibPaths[0])" "-Dforgewrapper.minecraft=$clientPath" -cp "$wrapper;$($classPath -join ";")" "io.github.zekerzhayard.forgewrapper.installer.Main" ($profileJson.clientArgs -join " ")
+    java "-Dforgewrapper.librariesDir=libraries" "-Dforgewrapper.installer=$($installerLibPaths[0])" "-Dforgewrapper.minecraft=$clientPath" -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" ($profileJson.clientArgs -join " ")
     
     Remove-Item $wrapper -Force
 }
