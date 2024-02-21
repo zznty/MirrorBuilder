@@ -58,7 +58,7 @@ foreach ($requiredComponent in $meta.requires) {
 
 Write-Debug "Installing $($meta.name) - $($meta.version)"
 
-mkdir libraries -Force | Out-Null
+New-Item -Type Directory libraries -Force | Out-Null
 
 Write-Debug "Fetching libraries"
 
@@ -116,7 +116,7 @@ function Get-Library {
     
     Write-Debug "Downloading $($library.name) - $url"
     
-    mkdir "libraries/$($dirArray -join "/")" -Force | Out-Null
+    New-Item -Type Directory "libraries/$($dirArray -join "/")" -Force | Out-Null
     
     Invoke-RestMethod -Uri $url -OutFile $OutFile
     
@@ -145,7 +145,7 @@ function Get-NativeLibraries {
 
         $dir = "natives/$($parts[0] -replace "windows", "mustdie")/$($parts.Length -gt 1 ? $parts[1] : "x86-64")"
 
-        mkdir $dir -Force | Out-Null
+        New-Item -Type Directory $dir -Force | Out-Null
 
         Get-ZipEntry temp -Exclude "META-INF/*" | Expand-ZipEntry -Destination $dir -Force
     }

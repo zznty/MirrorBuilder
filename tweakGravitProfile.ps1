@@ -38,7 +38,7 @@ function GitGradleBuild {
         [string]
         $outputPath
     )
-    $buildPath = New-TemporaryFile | ForEach-Object { Remove-Item $_; mkdir $_ }
+    $buildPath = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -Type Directory $_ }
     
     git clone --mirror $repoUrl "$buildPath/.git"
     git -C "$buildPath" config --unset core.bare
@@ -104,7 +104,7 @@ if ($minecraftVersion -eq "1.7.10") {
     $apiPath = "libraries/org/apache/logging/log4j/log4j-api/$version/log4j-api-$version.jar"
     $helpersPath = $corePath | Split-Path | Join-Path -ChildPath "log4j-core-$version-helpers-2.0-beta9.jar"
 
-    $corePath, $apiPath | Split-Path | ForEach-Object { mkdir $_ -Force } | Out-Null
+    $corePath, $apiPath | Split-Path | ForEach-Object { New-Item -Type Directory $_ -Force } | Out-Null
 
     Invoke-RestMethod "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-core/$version/log4j-core-$version.jar" -OutFile $corePath
     Invoke-RestMethod "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-api/$version/log4j-api-$version.jar" -OutFile $apiPath
@@ -125,11 +125,11 @@ if ($minecraftVersion -eq "1.7.10") {
 
 foreach ($os in "mustdie", "linux", "macos") {
     foreach ($arch in "x86-64", "x86", "arm64") {
-        mkdir "natives/$os/$arch" -Force | Out-Null
+        New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
     }
 }
 
-mkdir "mods" -Force | Out-Null
+New-Item -Type Directory "mods" -Force | Out-Null
 Write-Output "Place your mods here" | Set-Content "mods/mods.txt"
 
 if ($minecraftVersion -le "1.16.3") {
@@ -168,7 +168,7 @@ Invoke-RestMethod $authLibPatchUrl -OutFile $authLibPatch
 
 $authLib = Get-ChildItem libraries -Recurse -Filter "authlib-*.jar"
 
-mkdir "authlib" -Force | Out-Null
+New-Item -Type Directory "authlib" -Force | Out-Null
 Expand-Archive $authLib -DestinationPath "authlib"
 
 Expand-Archive $authLibPatch -DestinationPath "authlib" -Force
