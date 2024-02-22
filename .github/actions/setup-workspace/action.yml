@@ -1,0 +1,20 @@
+name: Setup workspace
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-java@v4
+      name: Setup Java 17
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+            
+    - name: Install PSCompression
+      shell: pwsh
+      run: |
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module PSCompression
+
+    - name: Create component directory
+      shell: pwsh
+      run: New-Item -Type Directory -Force component

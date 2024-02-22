@@ -20,7 +20,7 @@ function Get-ProfileComponentVersion {
     $profileJson."+components" | Where-Object { $_.uid -eq $ComponentUid } | Select-Object -ExpandProperty version
 }
 
-function GitGradleBuild {
+function Invoke-GitGradleBuild {
     param (
         [Parameter(Mandatory = $true)]
         [string]
@@ -44,10 +44,14 @@ function GitGradleBuild {
     git -C "$buildPath" config --unset core.bare
     git -C "$buildPath" checkout $repoTag
     git -C "$buildPath" switch -c branch
-    
-    Invoke-RestMethod "$MirrorUrl/$patchUrl" | git -C "$buildPath" apply -3 | Out-Null
 
-    (Get-Content "$buildPath/build.gradle") | ForEach-Object { $_ -replace "fromTag .*$", "" } | Set-Content "$buildPath/build.gradle"
+    $patchUrl = [Uri]::IsWellFormedUriString($patchUrl, [UriKind]::Absolute) ? $patchUrl : "$MirrorUrl/$patchUrl"
+    
+    Invoke-RestMethod $patchUrl | git -C "$buildPath" apply -3 | Out-Null
+
+    if (Test-Path "$buildPath/build.gradle") {
+        (Get-Content "$buildPath/build.gradle") | ForEach-Object { $_ -replace "fromTag .*$", "" } | Set-Content "$buildPath/build.gradle"
+    }
     
     $gradle = "$buildPath/gradlew"
     if ($IsWindows) {
@@ -60,11 +64,15 @@ function GitGradleBuild {
 
     Set-Location $buildPath
     
-    & $gradle build | Out-Null
+    & $gradle build
 
     Set-Location $prevPwd
+
+    if ($LastExitCode -ne 0) {
+        throw "Gradle build failed"
+    }
     
-    $jarPath = Get-ChildItem (Join-Path $buildPath -ChildPath "build/libs/") -Exclude "*-sources.jar" | Select-Object -First 1
+    $jarPath = Get-ChildItem (Join-Path $buildPath -ChildPath "build/libs/") -Exclude "*-sources.jar", "*-javadoc.jar" | Select-Object -First 1
     
     Copy-Item $jarPath -Force -Destination $outputPath
     
@@ -73,7 +81,7 @@ function GitGradleBuild {
 
 $fabricLoaderVersion = Get-ProfileComponentVersion "net.fabricmc.fabric-loader"
 if ($minecraftVersion -ge "1.14.0" -and $fabricLoaderVersion) {
-    GitGradleBuild "https://github.com/FabricMC/fabric-loader.git" "tags/$fabricLoaderVersion" "patches/FabricLoader.patch" "libraries/net/fabricmc/fabric-loader/$fabricLoaderVersion/fabric-loader-$fabricLoaderVersion.jar"
+    Invoke-GitGradleBuild "https://github.com/FabricMC/fabric-loader.git" "tags/$fabricLoaderVersion" "patches/FabricLoader.patch" "libraries/net/fabricmc/fabric-loader/$fabricLoaderVersion/fabric-loader-$fabricLoaderVersion.jar"
 }
 
 if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -ge "1.18.0") {
@@ -83,7 +91,7 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     $gitCommit = $manifest -split "`n" | Where-Object { $_ -like "Git-Commit:*" } | ForEach-Object { $_.Split(":")[1].Trim() }
 
-    GitGradleBuild "https://github.com/McModLauncher/securejarhandler.git" $gitCommit ($secureJarHandler -like "*securejarhandler-2.1.2*.jar" ? "patches/forge/securejarhandler-2.1.27.patch" : "patches/forge/securejarhandler.patch") $secureJarHandler
+    Invoke-GitGradleBuild "https://github.com/McModLauncher/securejarhandler.git" $gitCommit ($secureJarHandler -like "*securejarhandler-2.1.2*.jar" ? "patches/forge/securejarhandler-2.1.27.patch" : "patches/forge/securejarhandler.patch") $secureJarHandler
 }
 elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -eq "1.16.5") {
     $modLauncher = Get-ChildItem libraries -Recurse -Filter "modlauncher*.jar"
@@ -91,7 +99,49 @@ elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installe
     Invoke-RestMethod "https://github.com/RetroForge/modlauncher/releases/download/1.8.3-1.16.5-patched1/modlauncher-8.1.3.jar" -OutFile $modLauncher
 }
 
-if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge")) {
+# Cleanroom forge
+if ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.0.0") {
+    $bouncepad = Get-ChildItem libraries -Recurse -Filter "bouncepad-*.jar"
+
+    Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Bouncepad-cursed.git" "cursed-ASM-Upper" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Bouncepad.patch" $bouncepad
+}
+
+# GTNH lwjgl3ify
+if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenraven.lwjgl3ify.forgepatches")) {
+    $forgePatches = $profileJson.classPath -match "lwjgl3ify-.*-forgePatches.jar" | Select-Object -First 1
+
+    $rfb = New-TemporaryFile
+
+    Invoke-GitGradleBuild "https://github.com/GTNewHorizons/RetroFuturaBootstrap.git" "master" "https://mirror.gravitlauncher.com/5.6.x/patches/rfb.patch" $rfb
+
+    New-Item -Type Directory "forgePatches" -Force | Out-Null
+
+    Expand-Archive $forgePatches -DestinationPath "forgePatches"
+    Expand-Archive $rfb -DestinationPath "forgePatches" -Force
+
+    Compress-Archive "forgePatches/*" -DestinationPath $forgePatches -Force
+
+    Remove-Item $rfb, "forgePatches" -Recurse -Force
+
+    $profileJson.jvmArgs += "-Drfb.skipClassLoaderCheck=true"
+    $profileJson.jvmArgs = $profileJson.jvmArgs -notmatch "-Djava\.system\.class\.loader"
+
+    # rn metadata provides us with the guava 15 which is missing Runnables required for UniMixins to work
+    # TODO remove this
+    $guava = $profileJson.classPath -match ".*guava-15.0.jar"
+    if ($guava) {
+        $profileJson.classPath = $profileJson.classPath -notmatch ".*guava-15.0.jar"
+
+        New-Item -Type Directory "libraries/com/google/guava/guava/17.0/" -Force | Out-Null
+        $guava = "libraries/com/google/guava/guava/17.0/guava-17.0.jar"
+        Invoke-RestMethod "https://repo1.maven.org/maven2/com/google/guava/guava/17.0/guava-17.0.jar" -OutFile $guava
+
+        $profileJson.classPath += $guava
+    }
+}
+
+# launch wrapper only for <=1.12.2 and not lwjgl3
+if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -and -not (Get-ProfileComponentVersion "org.lwjgl3")) {
     $launchWrapper = Get-ChildItem libraries -Recurse -Filter "launchwrapper-*.jar"
     # TODO do not hardcode url
     Invoke-RestMethod "https://mirror.gravitlauncher.com/compat/launchwrapper-1.12-5.0.x.jar" -OutFile $launchWrapper

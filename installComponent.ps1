@@ -5,7 +5,7 @@ param (
     $ComponentUid,
 
     # Component Version to install
-    [Parameter(Mandatory = $true)]
+    [Parameter()]
     [string]
     $CompoentVersion,
 
@@ -16,13 +16,24 @@ param (
 
     # Determines if GravitTweaks should be run
     [switch]
-    $SkipGravitTweaks
+    $SkipGravitTweaks,
+
+    # Determines if local mmc metadata is provided at mmc/patches/
+    [switch]
+    $MMCPatch,
+
+    [switch]
+    $ChildProcess
 )
 
 $ErrorActionPreference = "Stop"
 $DebugPreference = 'Continue'
 
-$meta = Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/$CompoentVersion.json"
+$meta = $MMCPatch ? (Get-Content "mmc/patches/$ComponentUid.json" | ConvertFrom-Json) : (Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/$CompoentVersion.json")
+
+if ($MMCPatch) {
+    $CompoentVersion = $meta.version
+}
 
 $profileJsonPath = "profile.json"
 if (!(Test-Path $profileJsonPath -PathType Leaf)) {
@@ -49,7 +60,7 @@ foreach ($requiredComponent in $meta.requires) {
         exit 1
     }
     
-    pwsh $PSCommandPath -ComponentUid $requiredComponent.uid -CompoentVersion $requiredComponentVersion -SkipGravitTweaks
+    pwsh $PSCommandPath -ComponentUid $requiredComponent.uid -CompoentVersion $requiredComponentVersion -ChildProcess -SkipGravitTweaks -MMCPatch:$($MMCPatch.IsPresent)
     if ($LastExitCode -ne 0) {
         exit $LastExitCode
     }
@@ -86,6 +97,13 @@ function Get-Library {
         $fileName = "$($parts[1])-$($parts[2]).$extension"
     }
     $filePath = $dirArray + $fileName -join "/"
+
+    if ($library."MMC-hint" -eq "local") {
+        New-Item -Type Directory "libraries/$($dirArray -join "/")" -Force | Out-Null
+        Copy-Item "mmc/libraries/$fileName" "libraries/$filePath" -Force | Out-Null
+
+        return "libraries/$filePath"
+    }
 
     if (!$library.url -and !$library.downloads.artifact.url) {
         $library | Add-Member "url" "https://libraries.minecraft.net/"
@@ -165,17 +183,16 @@ if ($meta.mainJar) {
     $profileJson.classPath += @(Get-Library $meta.mainJar)
 }
 
+if ($meta."+jvmArgs") {
+    $profileJson."+jvmArgs" += $meta."+jvmArgs"
+}
+
 $componentManifest = [PSCustomObject]@{
     uid     = $ComponentUid;
     version = $CompoentVersion
 }
 
 $profileJson."+components" += @($componentManifest)
-
-if ($null -eq $meta.mainClass) {
-    $profileJson | ConvertTo-Json | Out-File $profileJsonPath
-    exit
-}
 
 $profileJson.title = "$($meta.name) $($meta.version)"
 $profileJson.uuid = "$(New-Guid)"
@@ -204,11 +221,17 @@ if ($meta."+tweakers") {
     }
 }
 
+if ($ChildProcess -or $null -eq $meta.mainClass) {
+    $profileJson | ConvertTo-Json | Out-File $profileJsonPath
+    Write-Host "Installed $($meta.name) - $($meta.version)"
+    exit
+}
+
 $profileJson.jvmArgs = @("-XX:+DisableAttachMechanism")
 
 [version]$minecraftVersion = $profileJson.version
 
-if ($minecraftVersion -le [version]"1.12.2") {
+if ($minecraftVersion -le [version]"1.12.2" -and -not $MMCPatch) {
     $profileJson.jvmArgs += "-XX:+UseConcMarkSweepGC", "-XX:+CMSIncrementalMode"
 }
 elseif ($minecraftVersion -le [version]"1.18") {
@@ -217,6 +240,11 @@ elseif ($minecraftVersion -le [version]"1.18") {
 
 if ($ComponentUid -eq "net.minecraftforge") {
     $profileJson.jvmArgs += "-Dfml.ignorePatchDiscrepancies=true", "-Dfml.ignoreInvalidMinecraftCertificates=true"
+}
+
+if ($profileJson."+jvmArgs") {
+    $profileJson.jvmArgs += $profileJson."+jvmArgs"
+    $profileJson.Remove("+jvmArgs")
 }
 
 if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main") {
@@ -258,10 +286,14 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 }
 
 if (!$SkipGravitTweaks) {
-    $profileJson.classPath = $profileJson.classPath | ForEach-Object { [PSCustomObject]@{
-        Path = $_;
-        Name = $_ | Split-Path | Split-Path -Parent
-    } } | Sort-Object -Property Name -Unique | ForEach-Object {$_.Path}
+    $profileJson.classPath = $profileJson.classPath | ForEach-Object { 
+        $versionPattern = [regex]::Escape(($_ | Split-Path | Split-Path -Leaf))
+        [PSCustomObject]@{
+            Path     = $_;
+            Name     = $_ | Split-Path | Split-Path -Parent;
+            Artifact = $_ | Split-Path -LeafBase | ForEach-Object { $_ -replace ".*-$versionPattern-?", "" }
+        } 
+    } | Sort-Object -Property Name, Artifact -Unique | ForEach-Object { $_.Path }
 
     Write-Debug "Running GravitTweaks"
     . $PSScriptRoot\tweakGravitProfile.ps1 $profileJson

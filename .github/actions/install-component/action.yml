@@ -9,30 +9,19 @@ inputs:
     description: Component version
     required: true
 
+  use-mmc-cache:
+    description: Use local MMC cache
+    required: false
+    default: 'false'
+
 runs:
   using: 'composite'
-  steps:
-    - uses: actions/setup-java@v4
-      name: Setup Java 17
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-            
-    - name: Install PSCompression
-      shell: pwsh
-      run: |
-        Set-PSRepository PSGallery -InstallationPolicy Trusted
-        Install-Module PSCompression
-
-    - name: Create component directory
-      shell: pwsh
-      run: mkdir component
-    
+  steps:  
     - name: Install Component
       shell: pwsh
       working-directory: component
       run: |
-        ../installComponent.ps1 "${{ inputs.uid }}" "${{ inputs.version }}"
+        ../installComponent.ps1 "${{ inputs.uid }}" "${{ inputs.version }}" -MMCPatch:$${{ inputs.use-mmc-cache }}
 
     - name: Get latest Fabric Loader version
       if: ${{ inputs.uid == 'net.fabricmc.intermediary' }}

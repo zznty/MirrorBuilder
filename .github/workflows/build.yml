@@ -19,14 +19,49 @@ jobs:
                     component: "net.fabricmc.intermediary"
                   - version: "1.12.2"
                     component: "net.fabricmc.intermediary"
+                include:
+                  - version: "1.7.10"
+                    lwjgl3: true
+                  - version: "1.12.2"
+                    lwjgl3: true
+
         steps:
             - uses: actions/checkout@v3
+
+            - name: Download MMC patches
+              if : ${{ matrix.lwjgl3 }}
+              shell: pwsh
+              run: |
+                New-Item -Type Directory -Force "component/mmc" | Out-Null
+                if ("${{ matrix.version }}" -eq "1.7.10") {
+                  $tag = gh release -R "GTNewHorizons/lwjgl3ify" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+
+                  Invoke-RestMethod "https://github.com/GTNewHorizons/lwjgl3ify/releases/download/$tag/lwjgl3ify-$tag-multimc.zip" -OutFile "mmc.zip"
+                  Expand-Archive -Path "mmc.zip" -DestinationPath "component/mmc"
+                  Remove-Item "mmc.zip"
+                }
+                elseif ("${{ matrix.version }}" -eq "1.12.2") {
+                  gh run -R "CleanroomMC/CleanroomMMC" download -D "component/mmc" -n "Cleanroom_MMC"
+                }
+                else {
+                  Write-Error "Unsupported version ${{ matrix.version }}"
+                  exit 1
+                }
 
             - name: Get Latest Component Version
               id: meta
               shell: pwsh
               run: |
-                $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                if ("${{ matrix.lwjgl3 }}" -eq "true") {
+                  # Workaround for 1.7.10, lwjgl3ify patches are not using forge uid
+                  $componentUid = "${{ matrix.version }}" -eq "1.7.10" ? "me.eigenraven.lwjgl3ify.forgepatches" : "${{ matrix.component }}"
+
+                  $version = ./mmcIndex.ps1 $componentUid "component/mmc" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                }
+                else {
+                  $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                }
+
                 "version=$version" >> $env:GITHUB_OUTPUT
 
             - name: Get version suffix
@@ -34,26 +69,81 @@ jobs:
               shell: pwsh
               run: |
                 $value = "${{ matrix.component }}" -eq "net.minecraftforge" ? "forge" : "fabric"
+
+                if ("${{ matrix.lwjgl3 }}" -eq "true") {
+                  $value += "-lwjgl3" 
+                }
+
                 "value=$value" >> $env:GITHUB_OUTPUT
 
             - name: Get Mirror Component Version
               id: mirror
               shell: pwsh
               run: |
-                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" "${{ matrix.component }}" "${{ secrets.MIRROR_URL }}"
+                $component = "${{ matrix.component }}"
+
+                # Workaround for 1.7.10, lwjgl3ify patches are not using forge uid
+                if ("${{ matrix.lwjgl3 }}" -eq "true" -and "${{ matrix.version }}" -eq "1.7.10") {
+                  $component = "me.eigenraven.lwjgl3ify.forgepatches"
+                }
+
+                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.MIRROR_URL }}"
                 "version=$version" >> $env:GITHUB_OUTPUT
-            
+
+            - name: Setup workspace
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              uses: ./.github/actions/setup-workspace
+
+            - name: Install GTNH lwjgl3ify forge patches
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}
+              shell: pwsh
+              working-directory: component
+              run: |
+                ../installComponent.ps1 "me.eigenraven.lwjgl3ify.forgepatches" -MMCPatch -SkipGravitTweaks
+
             - name: Install Component
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
               uses: ./.github/actions/install-component
               with:
                 uid: ${{ matrix.component }}
                 version: ${{ steps.meta.outputs.version }}
+                use-mmc-cache: ${{ matrix.lwjgl3 }}
+
+            - name: Download recommended mods for 1.7.10-lwjgl3ify
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}
+              shell: pwsh
+              working-directory: component/mods
+              run: |
+                # lwjgl3ify mod
+                $tag = gh release -R "GTNewHorizons/lwjgl3ify" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+                curl -sLO "https://github.com/GTNewHorizons/lwjgl3ify/releases/download/$tag/lwjgl3ify-$tag.jar"
+
+                # UniMixins mod
+                $tag = gh release -R "LegacyModdingMC/UniMixins" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+                curl -sLO "https://github.com/LegacyModdingMC/UniMixins/releases/download/$tag/+unimixins-all-1.7.10-$tag.jar"
+
+                # Hodgepodge mod (compat)
+                $tag = gh release -R "GTNewHorizons/Hodgepodge" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+                curl -sLO "https://github.com/GTNewHorizons/Hodgepodge/releases/download/$tag/hodgepodge-$tag.jar"
+                
+                # GTNHLib mod
+                $tag = gh release -R "GTNewHorizons/GTNHLib" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+                curl -sLO "https://github.com/GTNewHorizons/GTNHLib/releases/download/$tag/gtnhlib-$tag.jar"
+
+            - name: Download recommended mods for 1.12.2-cleanroom
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.12.2' }}
+              shell: pwsh
+              working-directory: component/mods
+              run: |
+                # Fugue mod (compat)
+                $tag = gh release -R "CleanroomMC/Fugue" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+                curl -sLO "https://github.com/CleanroomMC/Fugue/releases/download/$tag/Fugue-1.12.2-$tag.jar"
             
             - name: Build files to upload
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
               working-directory: component
               run: |
+                rm -rf mmc
                 mv "profile.json" "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json"
                 7z a -sdel "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip" libraries/ mods/ natives/
             
