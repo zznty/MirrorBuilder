@@ -63,6 +63,10 @@ function Invoke-GitGradleBuild {
     $prevPwd = $PWD
 
     Set-Location $buildPath
+
+    if (!$IsWindows) {
+        chmod +x $gradle
+    }
     
     & $gradle build
 
