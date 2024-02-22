@@ -60,7 +60,7 @@ jobs:
                   # Workaround for 1.7.10, lwjgl3ify patches are not using forge uid
                   $componentUid = "${{ matrix.version }}" -eq "1.7.10" ? "me.eigenraven.lwjgl3ify.forgepatches" : "${{ matrix.component }}"
 
-                  $version = ./mmcIndex.ps1 $componentUid "component/mmc" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                  $version = ./mmcIndex.ps1 $componentUid "component/mmc"
                 }
                 else {
                   $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }

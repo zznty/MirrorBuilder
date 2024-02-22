@@ -26,4 +26,4 @@ $versions = $versions | Where-Object {
     $result
 }
 
-$versions | Select-Object -ExpandProperty version -First 1
+$versions | Select-Object -ExpandProperty cachedVersion -First 1
