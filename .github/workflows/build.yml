@@ -3,6 +3,7 @@ on:
 
 env:
   LAUNCHER_VERSION: 5.5.x
+  GH_TOKEN: ${{ github.token }}
 
 name: Build Mirror Clients
 
@@ -24,6 +25,10 @@ jobs:
                     lwjgl3: true
                   - version: "1.12.2"
                     lwjgl3: true
+                  - version: "1.7.10"
+                    lwjgl3: false
+                  - version: "1.12.2"
+                    lwjgl3: false
 
         steps:
             - uses: actions/checkout@v3
