@@ -23,8 +23,10 @@ jobs:
                     component: "net.fabricmc.intermediary"
                 include:
                   - version: "1.7.10"
+                    component: "net.minecraftforge"
                     lwjgl3: true
                   - version: "1.12.2"
+                    component: "net.minecraftforge"
                     lwjgl3: true
 
         steps:
