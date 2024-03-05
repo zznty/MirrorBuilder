@@ -1,5 +1,14 @@
 name: Setup workspace
 
+inputs:
+  uid:
+    description: Component uid
+    required: true
+
+  version:
+    description: Minecraft Version
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -7,6 +16,13 @@ runs:
       name: Setup Java 17
       with:
         java-version: '17'
+        distribution: 'temurin'
+    
+    - uses: actions/setup-java@v4
+      name: Setup Java 16
+      if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.18.2' }}
+      with:
+        java-version: '16'
         distribution: 'temurin'
             
     - name: Install PSCompression

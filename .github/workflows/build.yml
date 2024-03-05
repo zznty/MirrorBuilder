@@ -10,7 +10,7 @@ env:
 name: Build Mirror Clients
 
 jobs:
-    build-client-forge:
+    build-client:
         runs-on: ubuntu-latest
         name: Build Client
         strategy:
@@ -99,6 +99,9 @@ jobs:
             - name: Setup workspace
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
               uses: ./.github/actions/setup-workspace
+              with:
+                uid: ${{ matrix.component }}
+                version: ${{ matrix.version }}
 
             - name: Install GTNH lwjgl3ify forge patches
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}
