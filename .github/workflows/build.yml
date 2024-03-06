@@ -1,5 +1,10 @@
 on:
     workflow_dispatch:
+      inputs:
+        force:
+          description: 'Force build of all jobs'
+          required: false
+          default: 'false'
     schedule:
       - cron: 0 0 * * MON
 
@@ -94,6 +99,11 @@ jobs:
                 }
 
                 $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.MIRROR_URL }}"
+
+                if ("${{ inputs.force }}" -eq "true") {
+                  $version = $null
+                }
+
                 "version=$version" >> $env:GITHUB_OUTPUT
 
             - name: Setup workspace
