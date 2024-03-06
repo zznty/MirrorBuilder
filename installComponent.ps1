@@ -141,8 +141,8 @@ function Get-Library {
     if ($library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:[\w\.]*:?[\w\.]*$") {
         Invoke-RestMethod -Uri $url -OutFile temp
 
-        Get-ZipEntry temp -Exclude "META-INF/*" -EntryType Archive | ForEach-Object { 
-            $path = "natives/$($_.EntryRelativePath -replace "windows", "mustdie" -replace "osx", "macos" -replace "x64", "x86-64")"
+        Get-ZipEntry temp -Exclude "META-INF/*" -Type Archive | ForEach-Object { 
+            $path = "natives/$($_.RelativePath -replace "windows", "mustdie" -replace "osx", "macos" -replace "x64", "x86-64")"
             New-Item -ItemType Directory ($path | Split-Path) -Force | Out-Null
             $_ | Get-ZipEntryContent -AsByteStream | Set-Content -Path $path -AsByteStream
          }
