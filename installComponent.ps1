@@ -143,6 +143,9 @@ function Get-Library {
 
         Get-ZipEntry temp -Exclude "META-INF/*" -Type Archive | ForEach-Object { 
             $path = "natives/$($_.RelativePath -replace "windows", "mustdie" -replace "osx", "macos" -replace "x64", "x86-64")"
+            $path = $path -split "(natives/(macos|linux|mustdie)/(arm32|arm64|x86|x86-64))/"
+            $path = Join-Path $path[1] -ChildPath (Split-Path -Leaf $path[-1])
+
             New-Item -ItemType Directory ($path | Split-Path) -Force | Out-Null
             $_ | Get-ZipEntryContent -AsByteStream | Set-Content -Path $path -AsByteStream
          }
@@ -246,7 +249,7 @@ if ($ChildProcess -or $null -eq $meta.mainClass) {
     exit
 }
 
-$profileJson.jvmArgs = "-XX:+DisableAttachMechanism", "-Djava.library.path=natives"
+$profileJson.jvmArgs = @("-XX:+DisableAttachMechanism")
 
 [version]$minecraftVersion = $profileJson.version
 
