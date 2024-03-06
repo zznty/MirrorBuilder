@@ -56,7 +56,7 @@ foreach ($requiredComponent in $meta.requires) {
     $requiredComponentVersion = $requiredComponent.equals
 
     if ($requiredComponent.suggests) {
-        $requiredComponentVersion = $MMCPatch ? $requiredComponent.suggests : (. $PSScriptRoot\componentsIndex.ps1 -ComponentUid $requiredComponent.uid)
+        $requiredComponentVersion = $MMCPatch ? $requiredComponent.suggests : (pwsh $PSScriptRoot\componentsIndex.ps1 -ComponentUid $requiredComponent.uid)
     }
     
     if ($null -eq $requiredComponentVersion) {
