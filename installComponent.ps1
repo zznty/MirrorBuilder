@@ -138,6 +138,20 @@ function Get-Library {
     
     Write-Debug "Downloading $($library.name) - $url"
     
+    if ($library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:[\w\.]*:?[\w\.]*$") {
+        Invoke-RestMethod -Uri $url -OutFile temp
+
+        Get-ZipEntry temp -Exclude "META-INF/*" -EntryType Archive | ForEach-Object { 
+            $path = "natives/$($_.EntryRelativePath -replace "windows", "mustdie" -replace "osx", "macos" -replace "x64", "x86-64")"
+            New-Item -ItemType Directory ($path | Split-Path) -Force | Out-Null
+            $_ | Get-ZipEntryContent -AsByteStream | Set-Content -Path $path -AsByteStream
+         }
+
+        Remove-Item temp
+
+        return $null
+    }
+
     New-Item -Type Directory "libraries/$($dirArray -join "/")" -Force | Out-Null
     
     Invoke-RestMethod -Uri $url -OutFile $OutFile
@@ -165,7 +179,7 @@ function Get-NativeLibraries {
 
         $parts = $nativeLibrary.Name.Split("-")
 
-        $dir = "natives/$($parts[0] -replace "windows", "mustdie")/$($parts.Length -gt 1 ? $parts[1] : "x86-64")"
+        $dir = "natives/$($parts[0] -replace "windows", "mustdie" -replace "osx", "macos")/$($parts.Length -gt 1 ? $parts[1] : "x86-64")"
 
         New-Item -Type Directory $dir -Force | Out-Null
 
@@ -216,6 +230,7 @@ if ($meta.compatibleJavaMajors) {
 }
 $profileJson.classLoaderConfig = "LAUNCHER" # default
 
+$profileJson.update = @("servers.dat")
 $profileJson.updateVerify = "libraries", "mods", "natives"
 
 $profileJson.clientArgs = $meta.minecraftArguments -split " "
@@ -231,7 +246,7 @@ if ($ChildProcess -or $null -eq $meta.mainClass) {
     exit
 }
 
-$profileJson.jvmArgs = @("-XX:+DisableAttachMechanism")
+$profileJson.jvmArgs = "-XX:+DisableAttachMechanism", "-Djava.library.path=natives"
 
 [version]$minecraftVersion = $profileJson.version
 
