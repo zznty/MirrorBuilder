@@ -69,6 +69,9 @@ jobs:
 
                   $version = ./mmcIndex.ps1 $componentUid "component/mmc"
                 }
+                elseif ("${{ matrix.component }}" -eq "net.minecraftforge" -and "${{ matrix.version }}" -eq "1.16.5") {
+                  $version = "36.2.41" # https://github.com/RetroForge/MinecraftForge/releases/tag/36.2.41-1.16.5-patched1
+                }
                 else {
                   $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
                 }
