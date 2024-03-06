@@ -138,7 +138,7 @@ function Get-Library {
     
     Write-Debug "Downloading $($library.name) - $url"
     
-    if ($library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:[\w\.]*:?[\w\.]*$") {
+    if ($library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?:?[\w\.]*$") {
         Invoke-RestMethod -Uri $url -OutFile temp
 
         Get-ZipEntry temp -Exclude "META-INF/*" -Type Archive | ForEach-Object { 
@@ -289,19 +289,24 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
     $wrapper = "ForgeWrapper.jar"
     Invoke-RestMethod "https://github.com/zznty/ForgeWrapper/releases/latest/download/$wrapper" -OutFile $wrapper
 
-    $clientPath = Get-ChildItem libraries -Recurse -Filter "minecraft-*-client.jar"
+    $clientPath = Get-ChildItem libraries -Recurse -Filter "minecraft-*-client.jar" | Resolve-Path -Relative
+    $clientPath = $clientPath -replace "\.\\", "" -replace "\\", "/"
     
     $classPath = $profileJson.classPath + $installerLibPaths
 
     $classPathSeparator = $IsWindows ? ";" : ":"
+
+    $wrapperJvmArgs = "-Dforgewrapper.librariesDir=libraries", "-Dforgewrapper.installer=$($installerLibPaths[0])", "-Dforgewrapper.minecraft=$clientPath"
     
-    java "-Dforgewrapper.librariesDir=libraries" "-Dforgewrapper.installer=$($installerLibPaths[0])" "-Dforgewrapper.minecraft=$clientPath" -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" ($profileJson.clientArgs -join " ")
+    java $wrapperJvmArgs -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" $profileJson.clientArgs
 
     if ($LastExitCode -ne 0) {
         exit $LastExitCode
     }
     
     Remove-Item $wrapper -Force
+
+    $profileJson.jvmArgs += $wrapperJvmArgs
 }
 
 if (!$SkipGravitTweaks) {
