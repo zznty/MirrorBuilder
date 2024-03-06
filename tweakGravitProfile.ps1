@@ -194,12 +194,16 @@ elseif ($minecraftVersion -lt "1.18.0") {
     # 1.16.4 - 1.17.x
     $authLibPatchUrl = "$MirrorUrl/authlib/LauncherAuthlib2.jar"
 }
+elseif ($minecraftVersion -lt "1.19.0") {
+    # 1.18.x
+    $authLibPatchUrl = "https://mirror.gravitlauncher.com/5.4.x/compat/authlib/LauncherAuthlib3.jar"
+}
 elseif ($minecraftVersion -eq "1.19.0") {
     # 1.19.0
     $authLibPatchUrl = "$MirrorUrl/authlib/LauncherAuthlib3-1.19.jar"
 }
 elseif ($minecraftVersion -lt "1.20.0") {
-    # 1.18.x - 1.19.x except 1.19.0
+    # 1.19.x except 1.19.0
     $authLibPatchUrl = "$MirrorUrl/authlib/LauncherAuthlib3.jar"
 }
 elseif ($minecraftVersion -lt "1.20.2") {
