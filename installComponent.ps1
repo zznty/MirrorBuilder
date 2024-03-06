@@ -53,7 +53,11 @@ foreach ($requiredComponent in $meta.requires) {
         continue
     }
     
-    $requiredComponentVersion = $requiredComponent.suggests ?? $requiredComponent.equals
+    $requiredComponentVersion = $requiredComponent.equals
+
+    if ($requiredComponent.suggests) {
+        $requiredComponentVersion = $MMCPatch ? $requiredComponent.suggests : (. $PSScriptRoot\componentsIndex.ps1 -ComponentUid $requiredComponent.uid)
+    }
     
     if ($null -eq $requiredComponentVersion) {
         Write-Error "Required component $($requiredComponent.uid) does not have a version to install nor currently installed"
