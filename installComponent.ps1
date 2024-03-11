@@ -138,7 +138,7 @@ function Get-Library {
     
     Write-Debug "Downloading $($library.name) - $url"
     
-    if ($library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?:?[\w\.]*$") {
+    if ($library.name -match "^.*:natives-(macos|linux|windows)(-(arm32|arm64|x86))?$" -or $library.name -match "^[\w\.]*:([\w\.(?!natives)]*-){1,2}natives-(macos|linux|windows)(-(arm32|arm64|x86))?:(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?:?[\w\.]*$") {
         Invoke-RestMethod -Uri $url -OutFile temp
 
         Get-ZipEntry temp -Exclude "META-INF/*" -Type Archive | ForEach-Object { 
