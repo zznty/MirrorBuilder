@@ -115,6 +115,7 @@ jobs:
               with:
                 uid: ${{ matrix.component }}
                 version: ${{ matrix.version }}
+                lwjgl3: ${{ matrix.lwjgl3 }}
 
             - name: Install GTNH lwjgl3ify forge patches
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}

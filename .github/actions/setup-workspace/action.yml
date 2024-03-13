@@ -8,6 +8,9 @@ inputs:
   version:
     description: Minecraft Version
     required: true
+  lwjgl3:
+    description: Lwjgl3
+    required: true
 
 runs:
   using: "composite"
@@ -23,6 +26,13 @@ runs:
       if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.18.2' }}
       with:
         java-version: '16'
+        distribution: 'temurin'
+
+    - uses: actions/setup-java@v4
+      name: Setup Java 21
+      if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.12.2' && inputs.lwjgl3 }}
+      with:
+        java-version: '21'
         distribution: 'temurin'
             
     - name: Install PSCompression
