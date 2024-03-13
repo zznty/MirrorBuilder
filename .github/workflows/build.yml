@@ -101,7 +101,7 @@ jobs:
                   $component = "me.eigenraven.lwjgl3ify.forgepatches"
                 }
 
-                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.MIRROR_URL }}"
+                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}"
 
                 if ("${{ inputs.force }}" -eq "true") {
                   $version = $null
