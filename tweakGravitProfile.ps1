@@ -95,7 +95,7 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     $gitCommit = $manifest -split "`n" | Where-Object { $_ -like "Git-Commit:*" } | ForEach-Object { $_.Split(":")[1].Trim() }
 
-    Invoke-GitGradleBuild "https://github.com/McModLauncher/securejarhandler.git" $gitCommit ($secureJarHandler -like "*securejarhandler-2.1.2*.jar" ? "patches/forge/securejarhandler-2.1.27.patch" : "patches/forge/securejarhandler.patch") $secureJarHandler
+    Invoke-GitGradleBuild "https://github.com/McModLauncher/securejarhandler.git" $gitCommit ($secureJarHandler -like "*securejarhandler-2.1.2*.jar" ? "https://mirror.gravitlauncher.com/5.5.x/patches/forge/securejarhandler-2.1.27.patch" : "https://mirror.gravitlauncher.com/5.5.x/patches/forge/securejarhandler.patch") $secureJarHandler
 }
 elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -eq "1.16.5") {
     $modLauncher = Get-ChildItem libraries -Recurse -Filter "modlauncher*.jar"
@@ -121,7 +121,7 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
 
     $rfb = New-TemporaryFile
 
-    Invoke-GitGradleBuild "https://github.com/GTNewHorizons/RetroFuturaBootstrap.git" "master" "https://mirror.gravitlauncher.com/5.6.x/patches/rfb.patch" $rfb
+    Invoke-GitGradleBuild "https://github.com/GTNewHorizons/RetroFuturaBootstrap.git" "master" "patches/rfb.patch" $rfb
 
     New-Item -Type Directory "forgePatches" -Force | Out-Null
 
