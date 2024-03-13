@@ -30,9 +30,9 @@ runs:
 
     - uses: actions/setup-java@v4
       name: Setup Java 21
-      if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.12.2' && inputs.lwjgl3 }}
+      if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.12.2' && inputs.lwjgl3 == 'true' }}
       with:
-        java-version: '16'
+        java-version: '21'
         distribution: 'temurin'
             
     - name: Install PSCompression
