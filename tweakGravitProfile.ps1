@@ -5,7 +5,7 @@ param (
     # Base URL for gravit mirrors
     [Parameter()]
     [string]
-    $MirrorUrl = "https://mirror.gravitlauncher.com/5.5.x"
+    $MirrorUrl = "https://mirror.gravitlauncher.com/5.6.x"
 )
 
 [version]$minecraftVersion = $profileJson.version
@@ -151,32 +151,6 @@ if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecr
     Invoke-RestMethod "https://mirror.gravitlauncher.com/compat/launchwrapper-1.12-5.0.x.jar" -OutFile $launchWrapper
 }
 
-if ($minecraftVersion -eq "1.7.10") {
-    # 1.7.10 meta uses log4j-2.0-beta9-fixed which is not compatible with gravit authlib 
-    $version = "2.17.2"
-    $corePath = "libraries/org/apache/logging/log4j/log4j-core/$version/log4j-core-$version.jar"
-    $apiPath = "libraries/org/apache/logging/log4j/log4j-api/$version/log4j-api-$version.jar"
-    $helpersPath = $corePath | Split-Path | Join-Path -ChildPath "log4j-core-$version-helpers-2.0-beta9.jar"
-
-    $corePath, $apiPath | Split-Path | ForEach-Object { New-Item -Type Directory $_ -Force } | Out-Null
-
-    Invoke-RestMethod "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-core/$version/log4j-core-$version.jar" -OutFile $corePath
-    Invoke-RestMethod "https://repo1.maven.org/maven2/org/apache/logging/log4j/log4j-api/$version/log4j-api-$version.jar" -OutFile $apiPath
-
-    Copy-Item (Join-Path $PSScriptRoot -ChildPath ($helpersPath | Split-Path -Leaf)) -Destination $helpersPath -Force
-
-    for ($i = 0; $i -lt $profileJson.classPath.Count; $i++) {
-        if ($profileJson.classPath[$i] -like "*log4j-api*") {
-            $profileJson.classPath[$i] = $apiPath
-        }
-        elseif ($profileJson.classPath[$i] -like "*log4j-core*") {
-            $profileJson.classPath[$i] = $corePath
-        }
-    }
-
-    $profileJson.classPath += $helpersPath -replace "\\", "/"
-}
-
 foreach ($os in "mustdie", "linux", "macos") {
     foreach ($arch in "x86-64", "x86", "arm64") {
         New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
@@ -193,10 +167,6 @@ if ($minecraftVersion -le "1.16.3") {
 elseif ($minecraftVersion -lt "1.18.0") {
     # 1.16.4 - 1.17.x
     $authLibPatchUrl = "$MirrorUrl/authlib/LauncherAuthlib2.jar"
-}
-elseif ($minecraftVersion -lt "1.19.0") {
-    # 1.18.x
-    $authLibPatchUrl = "https://mirror.gravitlauncher.com/5.4.x/compat/authlib/LauncherAuthlib3.jar"
 }
 elseif ($minecraftVersion -eq "1.19.0") {
     # 1.19.0

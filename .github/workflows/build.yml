@@ -9,7 +9,7 @@ on:
       - cron: 0 0 * * MON
 
 env:
-  LAUNCHER_VERSION: 5.5.x
+  LAUNCHER_VERSION: 5.6.x
   GH_TOKEN: ${{ github.token }}
 
 name: Build Mirror Clients
@@ -20,7 +20,7 @@ jobs:
         name: Build Client
         strategy:
             matrix:
-                version: ["1.7.10", "1.12.2", "1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1"]
+                version: ["1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1"]
                 component: ["net.minecraftforge", "net.fabricmc.intermediary"]
                 lwjgl3: [false]
                 exclude:
