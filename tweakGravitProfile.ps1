@@ -104,7 +104,12 @@ elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installe
 }
 
 # Cleanroom forge
-if ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.0.0") {
+if ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.24.0.3030") {
+    $foundation = Get-ChildItem libraries -Recurse -Filter "foundation-*.jar"
+
+    Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Foundation.git" "main" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Foundation.patch" $foundation
+}
+elseif ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.0.0") {
     $bouncepad = Get-ChildItem libraries -Recurse -Filter "bouncepad-*.jar"
 
     Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Bouncepad-cursed.git" "cursed-ASM-Upper" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Bouncepad.patch" $bouncepad
