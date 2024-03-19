@@ -5,8 +5,6 @@ on:
           description: 'Force build of all jobs'
           required: false
           default: 'false'
-    schedule:
-      - cron: 0 0 * * MON
 
 env:
   LAUNCHER_VERSION: 5.6.x
@@ -68,7 +66,7 @@ jobs:
             - name: Get Mirror Component Version
               id: mirror
               shell: pwsh
-              run: |
+              run: | # TODO broken
                 $component = "${{ matrix.component }}"
                 $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers"
 
