@@ -14,6 +14,11 @@ inputs:
     required: false
     default: 'false'
 
+  server-wrapper-profile:
+    description: Use server wrapper profile
+    required: false
+    default: 'false'
+
 runs:
   using: 'composite'
   steps:  
@@ -21,7 +26,7 @@ runs:
       shell: pwsh
       working-directory: component
       run: |
-        ../installComponent.ps1 "${{ inputs.uid }}" "${{ inputs.version }}" -MMCPatch:$${{ inputs.use-mmc-cache }}
+        ../installComponent.ps1 "${{ inputs.uid }}" "${{ inputs.version }}" -MMCPatch:$${{ inputs.use-mmc-cache }} -ServerWrapperProfile:$${{ inputs.server-wrapper-profile }}
 
     - name: Get latest Fabric Loader version
       if: ${{ inputs.uid == 'net.fabricmc.intermediary' }}

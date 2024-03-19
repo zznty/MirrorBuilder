@@ -14,7 +14,7 @@ param (
 )
 
 try {
-    $profileJson = Invoke-RestMethod -Uri "$MirrorUrl/clients/$VersionName.json"
+    $profileJson = Invoke-RestMethod -Uri "$MirrorUrl/$VersionName.json"
 }
 catch {
     return "0.0.0"

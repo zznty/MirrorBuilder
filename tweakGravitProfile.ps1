@@ -8,7 +8,7 @@ param (
     $MirrorUrl = "https://mirror.gravitlauncher.com/5.6.x"
 )
 
-[version]$minecraftVersion = $profileJson.version
+Import-Module -Name $PSScriptRoot\tweakers.psm1
 
 function Get-ProfileComponentVersion {
     param (
@@ -18,69 +18,6 @@ function Get-ProfileComponentVersion {
     )
     
     $profileJson."+components" | Where-Object { $_.uid -eq $ComponentUid } | Select-Object -ExpandProperty version
-}
-
-function Invoke-GitGradleBuild {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]
-        $repoUrl,
-
-        [Parameter(Mandatory = $true)]
-        [string]
-        $repoTag,
-
-        [Parameter(Mandatory = $true)]
-        [string]
-        $patchUrl,
-
-        [Parameter(Mandatory = $true)]
-        [string]
-        $outputPath
-    )
-    $buildPath = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -Type Directory $_ }
-    
-    git clone --mirror $repoUrl "$buildPath/.git"
-    git -C "$buildPath" config --unset core.bare
-    git -C "$buildPath" checkout $repoTag
-    git -C "$buildPath" switch -c branch
-
-    $patchUrl = [Uri]::IsWellFormedUriString($patchUrl, [UriKind]::Absolute) ? $patchUrl : "$MirrorUrl/$patchUrl"
-    
-    Invoke-RestMethod $patchUrl | git -C "$buildPath" apply -3 | Out-Null
-
-    if (Test-Path "$buildPath/build.gradle") {
-        (Get-Content "$buildPath/build.gradle") | ForEach-Object { $_ -replace "fromTag .*$", "" } | Set-Content "$buildPath/build.gradle"
-    }
-    
-    $gradle = "$buildPath/gradlew"
-    if ($IsWindows) {
-        $gradle += ".bat"
-    }
-    
-    Write-Debug "Running gradle build"
-    
-    $prevPwd = $PWD
-
-    Set-Location $buildPath
-
-    if (!$IsWindows) {
-        chmod +x $gradle
-    }
-    
-    & $gradle build
-
-    Set-Location $prevPwd
-
-    if ($LastExitCode -ne 0) {
-        throw "Gradle build failed"
-    }
-    
-    $jarPath = Get-ChildItem (Join-Path $buildPath -ChildPath "build/libs/") -Exclude "*-sources.jar", "*-javadoc.jar" | Select-Object -First 1
-    
-    Copy-Item $jarPath -Force -Destination $outputPath
-    
-    Remove-Item $buildPath -Recurse -Force -ErrorAction Ignore
 }
 
 $fabricLoaderVersion = Get-ProfileComponentVersion "net.fabricmc.fabric-loader"
@@ -105,12 +42,12 @@ elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installe
 
 # Cleanroom forge
 if ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.24.0.3030") {
-    $foundation = Get-ChildItem libraries -Recurse -Filter "foundation-*.jar"
+    $foundation = $profileJson.classPath -match "foundation-*.jar" | Select-Object -First 1
 
     Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Foundation.git" "main" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Foundation.patch" $foundation
 }
 elseif ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.0.0") {
-    $bouncepad = Get-ChildItem libraries -Recurse -Filter "bouncepad-*.jar"
+    $bouncepad = $profileJson.classPath -match "bouncepad-*.jar" | Select-Object -First 1
 
     Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Bouncepad-cursed.git" "cursed-ASM-Upper" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Bouncepad.patch" $bouncepad
 }
@@ -137,7 +74,7 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
 
     # rn metadata provides us with the guava 15 which is missing Runnables required for UniMixins to work
     # TODO remove this
-    $guava = $profileJson.classPath -match ".*guava-15.0.jar"
+    $guava = $profileJson.classPath -match ".*guava-15.0.jar" | Select-Object -First 1
     if ($guava) {
         $profileJson.classPath = $profileJson.classPath -notmatch ".*guava-15.0.jar"
 
@@ -151,14 +88,67 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
 
 # launch wrapper only for <=1.12.2 and not lwjgl3
 if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -and -not (Get-ProfileComponentVersion "org.lwjgl3")) {
-    $launchWrapper = Get-ChildItem libraries -Recurse -Filter "launchwrapper-*.jar"
-    # TODO do not hardcode url
-    Invoke-RestMethod "https://mirror.gravitlauncher.com/compat/launchwrapper-1.12-5.0.x.jar" -OutFile $launchWrapper
+    $launchWrapper = $profileJson.classPath -match "launchwrapper-.*.jar" | Select-Object -First 1
+    if (Get-ProfileComponentVersion "io.github.cruciblemc") {
+        Invoke-GitGradleBuild "https://github.com/CrucibleMC/LegacyLauncher.git" "bb33a856b1ae2df8b5e008ab1112986bce82b537" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/LegacyLauncher.patch" $launchWrapper
+    }
+    else {
+        # TODO do not hardcode url
+        Invoke-RestMethod "https://mirror.gravitlauncher.com/compat/launchwrapper-1.12-5.0.x.jar" -OutFile $launchWrapper
+    }
 }
 
-foreach ($os in "mustdie", "linux", "macos") {
-    foreach ($arch in "x86-64", "x86", "arm64") {
-        New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
+if ($minecraftVersion -le "1.7.10" -and $ServerWrapperProfile) {
+    $server = $profileJson.classPath -match "server-.*.jar" | Select-Object -First 1
+
+    New-Item -Type Directory "server" -Force | Out-Null
+    Expand-Archive $server -DestinationPath "server"
+
+    Remove-Item "server\org\apache\logging\log4j\" -Recurse -Force
+
+    $log4jUrls = "https://files.prismlauncher.org/maven/org/apache/logging/log4j/log4j-api/2.0-beta9-fixed/log4j-api-2.0-beta9-fixed.jar", "https://files.prismlauncher.org/maven/org/apache/logging/log4j/log4j-core/2.0-beta9-fixed/log4j-core-2.0-beta9-fixed.jar"
+    foreach ($url in $log4jUrls) {
+        Invoke-RestMethod $url -OutFile "temp.jar"
+
+        Get-ZipEntry "temp.jar" -Include "org/apache/logging/log4j/*" | Expand-ZipEntry -Destination "server/" 
+
+        Remove-Item "temp.jar"
+    }
+
+    Compress-Archive "server/*" -DestinationPath $server -Force
+
+    Remove-Item "server" -Recurse -Force
+}
+
+if ($minecraftVersion -eq "1.16.5" -and $ServerWrapperProfile) {
+    $server = $profileJson.classPath -match "server-.*.jar" | Select-Object -First 1
+
+    New-Item -Type Directory "server" -Force | Out-Null
+    Expand-Archive $server -DestinationPath "server"
+
+    Remove-Item "server\org\apache\logging\log4j\" -Recurse -Force
+
+    $log4jUrls = "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-api/2.15.0/log4j-api-2.15.0.jar", "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-core/2.15.0/log4j-core-2.15.0.jar", "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-slf4j18-impl/2.15.0/log4j-slf4j18-impl-2.15.0.jar"
+    foreach ($url in $log4jUrls) {
+        $libPath = Join-Path "libraries" -ChildPath (($url | Split-Path -NoQualifier) -replace "^//[\w\.]*/", "")
+
+        New-Item -Type Directory (Split-Path $libPath) -Force | Out-Null
+        
+        Invoke-RestMethod $url -OutFile $libPath
+        
+        $profileJson.classPath += $libPath -replace "\\", "/"
+    }
+
+    Compress-Archive "server/*" -DestinationPath $server -Force
+
+    Remove-Item "server" -Recurse -Force
+}
+
+if (!$ServerWrapperProfile) {
+    foreach ($os in "mustdie", "linux", "macos") {
+        foreach ($arch in "x86-64", "x86", "arm64") {
+            New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
+        }
     }
 }
 
@@ -199,13 +189,16 @@ Write-Debug "Downloading $authLibPatchUrl"
 $authLibPatch = "authlib-patch.jar"
 Invoke-RestMethod $authLibPatchUrl -OutFile $authLibPatch
 
-$authLib = Get-ChildItem libraries -Recurse -Filter "authlib-*.jar"
+Get-ChildItem libraries -Recurse | Where-Object { $_.Name -match "^(authlib.+\.jar)|(server.+\.jar)$" } | ForEach-Object {
+    Write-Debug "Patching $_"
+    New-Item -Type Directory "authlib" -Force | Out-Null
+    Expand-Archive $_ -DestinationPath "authlib"
 
-New-Item -Type Directory "authlib" -Force | Out-Null
-Expand-Archive $authLib -DestinationPath "authlib"
+    Expand-Archive $authLibPatch -DestinationPath "authlib" -Force
 
-Expand-Archive $authLibPatch -DestinationPath "authlib" -Force
+    Compress-Archive "authlib/*" -DestinationPath $_ -Force
 
-Compress-Archive "authlib/*" -DestinationPath $authLib -Force
+    Remove-Item "authlib" -Recurse -Force
+}
 
-Remove-Item "authlib", $authLibPatch -Recurse -Force
+Remove-Item $authLibPatch -Force

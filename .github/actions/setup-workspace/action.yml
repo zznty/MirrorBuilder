@@ -10,7 +10,8 @@ inputs:
     required: true
   lwjgl3:
     description: Lwjgl3
-    required: true
+    required: false
+    default: 'false'
 
 runs:
   using: "composite"
@@ -34,12 +35,13 @@ runs:
       with:
         java-version: '21'
         distribution: 'temurin'
-            
-    - name: Install PSCompression
-      shell: pwsh
-      run: |
-        Set-PSRepository PSGallery -InstallationPolicy Trusted
-        Install-Module PSCompression
+    
+    - uses: actions/setup-java@v4
+      name: Setup Java 8
+      if: ${{ inputs.uid == 'io.github.cruciblemc' }}
+      with:
+        java-version: '8'
+        distribution: 'temurin'
 
     - name: Create component directory
       shell: pwsh

@@ -24,10 +24,28 @@
             "cwd": "${workspaceFolder}/test",
             "args": [
                 "-ComponentUid",
-                "net.minecraftforge",
+                "io.izzel.arclight",
                 "-CompoentVersion",
-                "43.3.8"
+                "1.20.1-1.0.5-1a8925b1-forge",
+                "-ServerWrapperProile",
+                "-MMCPatch"
             ]
+        },
+        {
+            "name": "PowerShell: crucible.ps1",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/servers-meta-builder/crucible.ps1",
+            "cwd": "${workspaceFolder}/servers-meta-builder/test",
+            "args": []
+        },
+        {
+            "name": "PowerShell: forge.ps1",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/servers-meta-builder/forge.ps1",
+            "cwd": "${workspaceFolder}/servers-meta-builder/test",
+            "args": []
         }
     ]
 }

@@ -18,8 +18,18 @@ param (
     [string]
     $MetaUrl = "https://meta.prismlauncher.org/v1"
 )
+if ($MetaUrl.EndsWith(".zip")) {
+    Invoke-RestMethod -Uri "$MetaUrl" -OutFile "meta.zip"
 
-$indexJson = Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/"
+    Import-Module PSCompression
+
+    $indexJson = Get-ZipEntry -Path meta.zip -Include "$ComponentUid/index.json" | Get-ZipEntryContent | ConvertFrom-Json
+
+    Remove-Item meta.zip
+}
+else {
+    $indexJson = Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/index.json"
+}
 
 $versions = $Recommended ? ($indexJson.versions | Where-Object { $_.recommended }) : $indexJson.versions
 $versions = $IncludeSnapshots ? $versions : ($versions | Where-Object { !$_.type -or $_.type -ne "snapshot" })

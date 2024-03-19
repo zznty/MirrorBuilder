@@ -1,0 +1,77 @@
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 0 * * SUN
+env:
+  GH_TOKEN: '${{ github.token }}'
+name: Build Servers Meta
+jobs:
+  meta:
+    name: Build Meta
+    strategy:
+      matrix:
+        type:
+          - vanilla
+          - forge
+          - arclight
+          - crucible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install PSCompression
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSCompression
+      - run: 'git clone https://github.com/PrismLauncher/meta-upstream.git'
+        working-directory: servers-meta-builder
+        shell: pwsh
+        name: Clone meta upstream
+      - run: |
+          try {
+              Invoke-WebRequest "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/meta/v1/servers-meta.zip" -OutFile "meta.zip"
+          }
+          catch {
+              New-Item -Type Directory -Force "meta" | Out-Null
+              exit 0
+          }
+          Expand-Archive -Path "meta.zip" -DestinationPath "meta"
+          Remove-Item "meta.zip"
+        working-directory: servers-meta-builder
+        shell: pwsh
+        name: Clone current meta
+      - run: '../${{ matrix.type }}.ps1'
+        working-directory: servers-meta-builder/meta
+        shell: pwsh
+        name: Build meta
+      - uses: actions/upload-artifact@v4
+        with:
+          name: '${{ matrix.type }}-meta'
+          path: servers-meta-builder/meta/
+          if-no-files-found: error
+          retention-days: 1
+  compose-meta:
+    needs: meta
+    name: Compose meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: servers-meta
+      - name: Merge meta
+        shell: pwsh
+        run: >
+          New-Item -Type Directory -Force "meta" | Out-Null
+
+          Get-ChildItem -Path "servers-meta" -Directory | Get-ChildItem -Recurse | Move-Item -Destination "meta" -Force
+      - name: Zip meta
+        shell: pwsh
+        working-directory: meta
+        run: Compress-Archive -Path ./* -DestinationPath ../meta.zip
+      - name: Upload meta to S3
+        run: >
+          aws s3 --endpoint-url=${{ secrets.S3_ENDPOINT }} cp meta.zip "s3://${{ secrets.S3_BUCKET }}/meta/v1/servers-meta.zip"
+        env:
+          AWS_ACCESS_KEY_ID: '${{ secrets.S3_KEY_ID }}'
+          AWS_SECRET_ACCESS_KEY: '${{ secrets.S3_KEY }}'
+          AWS_DEFAULT_REGION: ru-central1

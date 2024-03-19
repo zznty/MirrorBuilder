@@ -39,6 +39,12 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
+            - name: Install PSCompression
+              shell: pwsh
+              run: |
+                Set-PSRepository PSGallery -InstallationPolicy Trusted
+                Install-Module PSCompression
+
             - name: Download MMC patches
               if : ${{ matrix.lwjgl3 }}
               shell: pwsh
@@ -101,7 +107,7 @@ jobs:
                   $component = "me.eigenraven.lwjgl3ify.forgepatches"
                 }
 
-                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}"
+                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients"
 
                 if ("${{ inputs.force }}" -eq "true") {
                   $version = $null

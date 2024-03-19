@@ -23,13 +23,34 @@ param (
     $MMCPatch,
 
     [switch]
-    $ChildProcess
+    $ChildProcess,
+
+    [switch]
+    $ServerWrapperProfile
 )
 
 $ErrorActionPreference = "Stop"
 $DebugPreference = 'Continue'
 
-$meta = $MMCPatch ? (Get-Content "mmc/patches/$ComponentUid.json" | ConvertFrom-Json) : (Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/$CompoentVersion.json")
+if ($env:META_URL) {
+    $MetaUrl = $env:META_URL
+}
+
+if ($MetaUrl.EndsWith(".zip")) {
+    Invoke-RestMethod -Uri "$MetaUrl" -OutFile "meta.zip"
+
+    Import-Module PSCompression
+
+    $meta = Get-ZipEntry -Path meta.zip -Include "$ComponentUid/$CompoentVersion.json" | Get-ZipEntryContent | ConvertFrom-Json
+
+    Remove-Item meta.zip
+}
+elseif ($MMCPatch) {
+    $meta = Get-Content "mmc/patches/$ComponentUid.json" | ConvertFrom-Json
+}
+else {
+    $meta = Invoke-RestMethod -Uri "$MetaUrl/$ComponentUid/$CompoentVersion.json"
+}
 
 if ($MMCPatch) {
     $CompoentVersion = $meta.version
@@ -63,8 +84,12 @@ foreach ($requiredComponent in $meta.requires) {
         Write-Error "Required component $($requiredComponent.uid) does not have a version to install nor currently installed"
         exit 1
     }
+
+    if ($requiredComponent.uid -eq "net.minecraftforge" -and $requiredComponentVersion -match "36.2.\d+") {
+        $requiredComponentVersion = "36.2.41"
+    }
     
-    pwsh $PSCommandPath -ComponentUid $requiredComponent.uid -CompoentVersion $requiredComponentVersion -ChildProcess -SkipGravitTweaks -MMCPatch:$($MMCPatch.IsPresent)
+    pwsh $PSCommandPath -ComponentUid $requiredComponent.uid -CompoentVersion $requiredComponentVersion -ChildProcess -SkipGravitTweaks -MMCPatch:$($MMCPatch.IsPresent) -ServerWrapperProfile:$($ServerWrapperProfile.IsPresent)
     if ($LastExitCode -ne 0) {
         exit $LastExitCode
     }
@@ -110,7 +135,7 @@ function Get-Library {
     }
 
     if (!$library.url -and !$library.downloads.artifact.url) {
-        $library | Add-Member "url" "https://libraries.minecraft.net/"
+        $library | Add-Member "url" "https://libraries.minecraft.net/" -Force
     }
 
     $url = $library.downloads.artifact.url ?? "$($library.url.TrimEnd("/"))/$filePath"
@@ -147,8 +172,8 @@ function Get-Library {
             $path = Join-Path $path[1] -ChildPath (Split-Path -Leaf $path[-1])
 
             New-Item -ItemType Directory ($path | Split-Path) -Force | Out-Null
-            $_ | Get-ZipEntryContent -AsByteStream | Set-Content -Path $path -AsByteStream
-         }
+            $_  | Get-ZipEntryContent -AsByteStream | Set-Content -Path $path -AsByteStream
+        }
 
         Remove-Item temp
 
@@ -157,7 +182,25 @@ function Get-Library {
 
     New-Item -Type Directory "libraries/$($dirArray -join "/")" -Force | Out-Null
     
-    Invoke-RestMethod -Uri $url -OutFile $OutFile
+    foreach ($url in $library.'MMC-hint' -eq "maven" ? ($meta.maven | ForEach-Object { "$_/$filePath" }) : @($url)) {
+        try {
+            if ($library.downloads.artifact.archivePath) {
+                Invoke-RestMethod -Uri $url -OutFile "$OutFile.fat"
+
+                Get-ZipEntry "$OutFile.fat" -Include $library.downloads.artifact.archivePath | Get-ZipEntryContent -AsByteStream | Set-Content -Path $OutFile -AsByteStream
+            }
+            else {
+                Invoke-RestMethod -Uri $url -OutFile $OutFile
+            }
+        }
+        catch {
+            Write-Debug "Failed to download $($library.name) - $url"
+        }
+    }
+
+    if (!(Test-Path $OutFile)) {
+        throw "Failed to download $($library.name) - $url"
+    }
     
     return $OutFile
 }
@@ -192,6 +235,16 @@ function Get-NativeLibraries {
     Remove-Item temp
 }
 
+function Get-ProfileComponentVersion {
+    param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]
+        $ComponentUid
+    )
+    
+    $profileJson."+components" | Where-Object { $_.uid -eq $ComponentUid } | Select-Object -ExpandProperty version
+}
+
 foreach ($library in $meta.libraries) {
     $path = Get-Library $library
 
@@ -214,16 +267,28 @@ $componentManifest = [PSCustomObject]@{
 }
 
 $profileJson."+components" += @($componentManifest)
+$profileJson.classLoaderConfig = $ServerWrapperProfile ? "MODULE" : "LAUNCHER" # default, module means launcher for server wrapper
 
-$profileJson.title = "$($meta.name) $($meta.version)"
-$profileJson.uuid = "$(New-Guid)"
-if ($ComponentUid -eq "net.minecraft") {
-    $profileJson.version = $meta.version
-    $profileJson.assetIndex = $meta.version
-    $profileJson.dir = $meta.version
+if (!$ServerWrapperProfile) {
+    $profileJson.title = "$($meta.name) $($meta.version)"
+    $profileJson.uuid = "$(New-Guid)"
+    if ($ComponentUid -eq "net.minecraft") {
+        $profileJson.version = $meta.version
+        $profileJson.assetIndex = $meta.version
+        $profileJson.dir = $meta.version
+    }
+    $profileJson.assetDir = "assets"
+    $profileJson.info = "Server description"
+    $profileJson.update = @("servers.dat")
+    $profileJson.updateVerify = "libraries", "mods", "natives"
 }
-$profileJson.assetDir = "assets"
-$profileJson.info = "Server description"
+else {
+    $profileJson.address = "ws://localhost:9274/api"
+    $profileJson.serverName = "$($meta.name)-$($meta.version)"
+    $profileJson.nativesDir = "natives"
+    $profileJson.autoloadLibraries = $false
+}
+
 $profileJson.mainClass = $meta.mainClass
 
 if ($meta.compatibleJavaMajors) {
@@ -231,27 +296,25 @@ if ($meta.compatibleJavaMajors) {
     $profileJson.recommendJavaVersion = $meta.compatibleJavaMajors[-1]
     $profileJson.maxJavaVersion = 999 # default
 }
-$profileJson.classLoaderConfig = "LAUNCHER" # default
 
-$profileJson.update = @("servers.dat")
-$profileJson.updateVerify = "libraries", "mods", "natives"
+$argsPropertyName = $ServerWrapperProfile ? "args" : "clientArgs"
 
-$profileJson.clientArgs = $meta.minecraftArguments -split " "
+$profileJson.$argsPropertyName = $meta.minecraftArguments -split " "
 if ($meta."+tweakers") {
     foreach ($tweaker in $meta."+tweakers") {
-        $profileJson.clientArgs += "--tweakClass", $tweaker
+        $profileJson.$argsPropertyName += "--tweakClass", $tweaker
     }
 }
 
-if ($ChildProcess -or $null -eq $meta.mainClass) {
-    $profileJson | ConvertTo-Json | Out-File $profileJsonPath
+if ($ChildProcess -and $profileJson.mainClass -ne "io.github.zekerzhayard.forgewrapper.installer.Main") {
+    $profileJson | ConvertTo-Json -Depth 100 | Out-File $profileJsonPath
     Write-Host "Installed $($meta.name) - $($meta.version)"
     exit
 }
 
-$profileJson.jvmArgs = @("-XX:+DisableAttachMechanism")
+$profileJson.jvmArgs = $ServerWrapperProfile ? "-Xms1G", "-Xmx1G" : @("-XX:+DisableAttachMechanism")
 
-[version]$minecraftVersion = $profileJson.version
+[version]$minecraftVersion = Get-ProfileComponentVersion "net.minecraft"
 
 if ($minecraftVersion -le [version]"1.12.2" -and -not $MMCPatch) {
     $profileJson.jvmArgs += "-XX:+UseConcMarkSweepGC", "-XX:+CMSIncrementalMode"
@@ -277,6 +340,11 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
         $forgeLauncher = Get-ChildItem libraries -Recurse -Filter "forge-1.16.5-*-launcher.jar"
 
+        if (!$forgeLauncher) {
+            $forgeLauncher = "libraries/net/minecraftforge/forge/1.16.5-36.2.41/forge-1.16.5-36.2.41-launcher.jar"
+            $profileJson.classPath += $forgeLauncher
+        }
+
         Invoke-RestMethod "https://github.com/RetroForge/MinecraftForge/releases/download/36.2.41-1.16.5-patched1/forge-1.16.5-36.2.41-launcher.jar" -OutFile $forgeLauncher
 
         $profileJson.minJavaVersion = 17
@@ -287,13 +355,14 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
     
     $versionJson = Get-ZipEntry $installerLibPaths[0] -Include version.json | Get-ZipEntryContent | ConvertFrom-Json
 
-    $profileJson.clientArgs = $versionJson.arguments.game
-    
-    $wrapper = "ForgeWrapper.jar"
-    Invoke-RestMethod "https://github.com/zznty/ForgeWrapper/releases/latest/download/$wrapper" -OutFile $wrapper
+    $profileJson.$argsPropertyName = $ServerWrapperProfile ? $meta.minecraftArguments : $versionJson.arguments.game
 
-    $clientPath = Get-ChildItem libraries -Recurse -Filter "minecraft-*-client.jar" | Resolve-Path -Relative
-    $clientPath = $clientPath -replace "\.\\", "" -replace "\\", "/"
+    $clientPath = Get-ChildItem libraries -Recurse -Filter ($ServerWrapperProfile ? "server-$minecraftVersion.jar" : "minecraft-*-client.jar") | Resolve-Path -Relative
+    $clientPath = $clientPath -replace "\.[\\/]", "" -replace "\\", "/"
+
+    if (Test-Path "$clientPath.fat") {
+        $clientPath = "$clientPath.fat"
+    }
     
     $classPath = $profileJson.classPath + $installerLibPaths
 
@@ -301,7 +370,10 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     $wrapperJvmArgs = "-Dforgewrapper.librariesDir=libraries", "-Dforgewrapper.installer=$($installerLibPaths[0])", "-Dforgewrapper.minecraft=$clientPath"
     
-    java $wrapperJvmArgs -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" $profileJson.clientArgs
+    $wrapper = "ForgeWrapper.jar"
+    Invoke-RestMethod "https://github.com/zznty/ForgeWrapper/releases/latest/download/$wrapper" -OutFile $wrapper
+
+    java $wrapperJvmArgs -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" $profileJson.$argsPropertyName --setup
 
     if ($LastExitCode -ne 0) {
         exit $LastExitCode
@@ -309,7 +381,14 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
     
     Remove-Item $wrapper -Force
 
-    $profileJson.jvmArgs += $wrapperJvmArgs
+    $profileJson.jvmArgs += $wrapperJvmArgs -replace "\.fat", ""
+
+    if ($ServerWrapperProfile) {
+        # Cleanup after forge installer
+
+        Remove-Item -Force "run.*" -ErrorAction Ignore
+        Remove-Item -Force "user_jvm_args.txt" -ErrorAction Ignore
+    }
 }
 
 if (!$SkipGravitTweaks) {
@@ -324,8 +403,37 @@ if (!$SkipGravitTweaks) {
 
     Write-Debug "Running GravitTweaks"
     . $PSScriptRoot\tweakGravitProfile.ps1 $profileJson
+
+    if ($ServerWrapperProfile) {
+        $profileJson.$argsPropertyName += "nogui"
+        $profileJson.jvmArgs -join " " | Set-Content jvm_args.txt
+        $profileJson.Remove("jvmArgs")
+
+        $profileJson.mainclass = $profileJson.mainClass
+        $profileJson.Remove("mainClass")
+
+        $profileJson.classpath = $profileJson.classPath
+        $profileJson.Remove("classPath")
+
+        $profileJson.env = "STD"
+        $profileJson.oauthExpireTime = 0
+        $profileJson.extendedTokens = [PSCustomObject]@{
+            checkServer = [PSCustomObject]@{
+                token = "your token"
+            }
+        }
+        $profileJson.encodedServerRsaPublicKey = "base64 -w 0 .keys/rsa_id.pub | tr '/+' '_-'"
+        $profileJson.encodedServerEcPublicKey = "base64 -w 0 .keys/ecdsa_id.pub | tr '/+' '_-'"
+    }
 }
 
-$profileJson | ConvertTo-Json | Out-File $profileJsonPath
+$profileJson | ConvertTo-Json -Depth 100 | Out-File $profileJsonPath
+
+if ($ServerWrapperProfile -and !$SkipGravitTweaks) {
+    Copy-Item "$PSScriptRoot\templates\start.sh" "."
+    Move-Item "profile.json" "ServerWrapperConfig.json"
+
+    Get-ChildItem -Recurse libraries -File -Filter "*.fat" | Remove-Item 
+}
 
 Write-Host "Installed $($meta.name) - $($meta.version)"

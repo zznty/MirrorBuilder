@@ -1,0 +1,110 @@
+on:
+    workflow_dispatch:
+      inputs:
+        force:
+          description: 'Force build of all jobs'
+          required: false
+          default: 'false'
+    schedule:
+      - cron: 0 0 * * MON
+
+env:
+  LAUNCHER_VERSION: 5.6.x
+  GH_TOKEN: ${{ github.token }}
+  META_URL: "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/meta/v1/servers-meta.zip"
+
+name: Build Mirror Servers
+
+jobs:
+    build-client:
+        runs-on: ubuntu-latest
+        name: Build Server
+        strategy:
+            matrix:
+                version: ["1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1"]
+                component: ["net.minecraftforge", "io.izzel.arclight"]
+                exclude:
+                  - version: "1.16.5"
+                    component: "io.izzel.arclight" # arclight requires forge 36.2.39 while only 36.2.41 is available
+
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Install PSCompression
+              shell: pwsh
+              run: |
+                Set-PSRepository PSGallery -InstallationPolicy Trusted
+                Install-Module PSCompression
+
+            - name: Get Latest Component Version
+              id: meta
+              shell: pwsh
+              run: |
+                if ("${{ matrix.component }}" -eq "net.minecraftforge" -and "${{ matrix.version }}" -eq "1.16.5") {
+                  $version = "36.2.41" # https://github.com/RetroForge/MinecraftForge/releases/tag/36.2.41-1.16.5-patched1
+                }
+                else {
+                  $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" } -MetaUrl "${{ env.META_URL }}"
+                }
+
+                "version=$version" >> $env:GITHUB_OUTPUT
+
+            - name: Get version suffix
+              id: suffix
+              shell: pwsh
+              run: |
+                if ("${{ matrix.component }}" -eq "net.minecraftforge") {
+                  $value = "forge"
+                }
+                elseif ("${{ matrix.component }}" -eq "io.izzel.arclight") {
+                  $value = "arclight"
+                }
+                else {
+                  $value = "${{ matrix.component }}"
+                }
+
+                "value=$value" >> $env:GITHUB_OUTPUT
+
+            - name: Get Mirror Component Version
+              id: mirror
+              shell: pwsh
+              run: |
+                $component = "${{ matrix.component }}"
+                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers"
+
+                if ("${{ inputs.force }}" -eq "true") {
+                  $version = $null
+                }
+
+                "version=$version" >> $env:GITHUB_OUTPUT
+
+            - name: Setup workspace
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              uses: ./.github/actions/setup-workspace
+              with:
+                uid: ${{ matrix.component }}
+                version: ${{ matrix.version }}
+
+            - name: Install Component
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              uses: ./.github/actions/install-component
+              with:
+                uid: ${{ matrix.component }}
+                version: ${{ steps.meta.outputs.version }}
+                server-wrapper-profile: 'true'
+            
+            - name: Build files to upload
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              working-directory: component
+              run: |
+                rm -rf mmc
+                7z a -sdel "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip" ./*
+            
+            - name: Upload profile
+              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
+              working-directory: component
+              run: aws s3 --endpoint-url=${{ secrets.S3_ENDPOINT }} sync . s3://${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers/
+              env:
+                AWS_ACCESS_KEY_ID: ${{ secrets.S3_KEY_ID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_KEY }}
+                AWS_DEFAULT_REGION: ru-central1
