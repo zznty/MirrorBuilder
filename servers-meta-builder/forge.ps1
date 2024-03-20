@@ -120,7 +120,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
                 }
             );
             mainClass          = "io.github.zekerzhayard.forgewrapper.installer.Main";
-            minecraftArguments = "--launchTarget", ($mcVersion -ge "1.18.0" ? "fmlserver" : "forgeserver"), "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", ""
+            minecraftArguments = "--launchTarget", ($mcVersion -ge "1.18.0" ? "forgeserver" : "fmlserver"), "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", ""
             mavenFiles         = @([PSCustomObject]@{
                     name      = "net.minecraftforge:forge:$($forgeVersion.longversion):installer";
                     downloads = [PSCustomObject]@{
