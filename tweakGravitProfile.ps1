@@ -190,6 +190,10 @@ $authLibPatch = "authlib-patch.jar"
 Invoke-RestMethod $authLibPatchUrl -OutFile $authLibPatch
 
 Get-ChildItem libraries -Recurse | Where-Object { $_.Name -match "^(authlib.+\.jar)|(server.+\.jar)$" } | ForEach-Object {
+    if (!(Get-ZipEntry $_ -Include "com/mojang/authlib/*")) {
+        return
+    }
+
     Write-Debug "Patching $_"
     New-Item -Type Directory "authlib" -Force | Out-Null
     Expand-Archive $_ -DestinationPath "authlib"
