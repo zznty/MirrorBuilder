@@ -50,6 +50,12 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
             version     = $_.longVersion
             recommended = $_.key -like "/arclight/branches/*/versions-stable/*/forge"
             sha1        = $_.permlink -replace "^.*objects/", ""
+            requires    = @(
+                [PSCustomObject]@{
+                    uid    = "net.minecraft";
+                    equals = $_.mcVersion
+                }
+            )
         }
     }
 } | ConvertTo-Json -Depth 100 | Set-Content "$uid/index.json"

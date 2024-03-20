@@ -44,4 +44,10 @@ $versions = $versions | Where-Object {
     $result
 }
 
-$versions | Select-Object -ExpandProperty version | Sort-Object -Descending | Select-Object -First 1
+$versions | ForEach-Object { 
+    [PSCustomObject]@{
+        version     = $_.version.Contains("-") ? [version]($_.version -split "-")[1] : [version]$_.version
+        longVersion = $_.version
+        releaseTime = $_.releaseTime
+    }
+} | Sort-Object -Descending -Property releaseTime, version | Select-Object -ExpandProperty longVersion -First 1
