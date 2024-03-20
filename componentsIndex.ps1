@@ -44,4 +44,4 @@ $versions = $versions | Where-Object {
     $result
 }
 
-$versions | Select-Object -ExpandProperty version -First 1
+$versions | Select-Object -ExpandProperty version | Sort-Object -Descending | Select-Object -First 1
