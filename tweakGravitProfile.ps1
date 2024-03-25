@@ -22,7 +22,7 @@ function Get-ProfileComponentVersion {
 
 $fabricLoaderVersion = Get-ProfileComponentVersion "net.fabricmc.fabric-loader"
 if ($minecraftVersion -ge "1.14.0" -and $fabricLoaderVersion) {
-    Invoke-GitGradleBuild "https://github.com/FabricMC/fabric-loader.git" "tags/$fabricLoaderVersion" "patches/FabricLoader.patch" "libraries/net/fabricmc/fabric-loader/$fabricLoaderVersion/fabric-loader-$fabricLoaderVersion.jar"
+    Invoke-GitGradleBuild "https://github.com/FabricMC/fabric-loader.git" "tags/$fabricLoaderVersion" "$MirrorUrl/patches/FabricLoader.patch" "libraries/net/fabricmc/fabric-loader/$fabricLoaderVersion/fabric-loader-$fabricLoaderVersion.jar"
 }
 
 if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -ge "1.18.0") {
@@ -58,7 +58,7 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
 
     $rfb = New-TemporaryFile
 
-    Invoke-GitGradleBuild "https://github.com/GTNewHorizons/RetroFuturaBootstrap.git" "master" "patches/rfb.patch" $rfb
+    Invoke-GitGradleBuild "https://github.com/GTNewHorizons/RetroFuturaBootstrap.git" "master" "$MirrorUrl/patches/rfb.patch" $rfb
 
     New-Item -Type Directory "forgePatches" -Force | Out-Null
 
