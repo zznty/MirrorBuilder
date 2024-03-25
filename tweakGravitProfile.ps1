@@ -42,19 +42,19 @@ elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installe
 
 # Cleanroom forge
 if ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.24.0.3030") {
-    $foundation = $profileJson.classPath -match "foundation-*.jar" | Select-Object -First 1
+    $foundation = $profileJson.classPath -match ".*foundation-.*.jar" | Select-Object -First 1
 
     Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Foundation.git" "main" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Foundation.patch" $foundation
 }
 elseif ($minecraftVersion -eq "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -gt "15.0.0") {
-    $bouncepad = $profileJson.classPath -match "bouncepad-*.jar" | Select-Object -First 1
+    $bouncepad = $profileJson.classPath -match ".*bouncepad-.*.jar" | Select-Object -First 1
 
     Invoke-GitGradleBuild "https://github.com/kappa-maintainer/Bouncepad-cursed.git" "cursed-ASM-Upper" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/Bouncepad.patch" $bouncepad
 }
 
 # GTNH lwjgl3ify
 if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenraven.lwjgl3ify.forgepatches")) {
-    $forgePatches = $profileJson.classPath -match "lwjgl3ify-.*-forgePatches.jar" | Select-Object -First 1
+    $forgePatches = $profileJson.classPath -match ".*lwjgl3ify-.*-forgePatches\.jar" | Select-Object -First 1
 
     $rfb = New-TemporaryFile
 
@@ -88,7 +88,7 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
 
 # launch wrapper only for <=1.12.2 and not lwjgl3
 if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecraftforge") -and -not (Get-ProfileComponentVersion "org.lwjgl3")) {
-    $launchWrapper = $profileJson.classPath -match "launchwrapper-.*.jar" | Select-Object -First 1
+    $launchWrapper = $profileJson.classPath -match ".*launchwrapper-.*.jar" | Select-Object -First 1
     if (Get-ProfileComponentVersion "io.github.cruciblemc") {
         Invoke-GitGradleBuild "https://github.com/CrucibleMC/LegacyLauncher.git" "bb33a856b1ae2df8b5e008ab1112986bce82b537" "https://zmirror.storage.yandexcloud.net/5.5.x/patches/LegacyLauncher.patch" $launchWrapper
     }
@@ -99,7 +99,7 @@ if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecr
 }
 
 if ($minecraftVersion -le "1.7.10" -and $ServerWrapperProfile) {
-    $server = $profileJson.classPath -match "server-.*.jar" | Select-Object -First 1
+    $server = $profileJson.classPath -match ".*server-.*.jar" | Select-Object -First 1
 
     New-Item -Type Directory "server" -Force | Out-Null
     Expand-Archive $server -DestinationPath "server"
@@ -121,7 +121,7 @@ if ($minecraftVersion -le "1.7.10" -and $ServerWrapperProfile) {
 }
 
 if ($minecraftVersion -eq "1.16.5" -and $ServerWrapperProfile) {
-    $server = $profileJson.classPath -match "server-.*.jar" | Select-Object -First 1
+    $server = $profileJson.classPath -match ".*server-.*.jar" | Select-Object -First 1
 
     New-Item -Type Directory "server" -Force | Out-Null
     Expand-Archive $server -DestinationPath "server"
