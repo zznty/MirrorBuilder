@@ -128,7 +128,7 @@ jobs:
               shell: pwsh
               working-directory: component
               run: |
-                ../installComponent.ps1 "me.eigenraven.lwjgl3ify.forgepatches" -MMCPatch -SkipGravitTweaks
+                ../installComponent.ps1 "me.eigenraven.lwjgl3ify.forgepatches" -MMCPatch -SkipGravitTweaks -ChildProcess
 
             - name: Install Component
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
