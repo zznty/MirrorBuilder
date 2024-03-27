@@ -301,7 +301,7 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     $wrapperJvmArgs = "-Dforgewrapper.librariesDir=libraries", "-Dforgewrapper.installer=$($installerLibPaths[0])", "-Dforgewrapper.minecraft=$clientPath"
     
-    java $wrapperJvmArgs -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" $profileJson.clientArgs
+    java $wrapperJvmArgs -cp "$wrapper$classPathSeparator$($classPath -join $classPathSeparator)" "io.github.zekerzhayard.forgewrapper.installer.Main" $profileJson.clientArgs --setup
 
     if ($LastExitCode -ne 0) {
         exit $LastExitCode
