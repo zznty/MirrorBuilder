@@ -65,7 +65,8 @@ if ($minecraftVersion -eq "1.7.10" -and (Get-ProfileComponentVersion "me.eigenra
     Expand-Archive $forgePatches -DestinationPath "forgePatches"
     Expand-Archive $rfb -DestinationPath "forgePatches" -Force
 
-    Compress-Archive "forgePatches/*" -DestinationPath $forgePatches -Force
+    Compress-ZipArchive "forgePatches/*" -DestinationPath $forgePatches -Force
+    Move-Item "$forgePatches.zip" $forgePatches -Force
 
     Remove-Item $rfb, "forgePatches" -Recurse -Force
 
@@ -115,7 +116,8 @@ if ($minecraftVersion -le "1.7.10" -and $ServerWrapperProfile) {
         Remove-Item "temp.jar"
     }
 
-    Compress-Archive "server/*" -DestinationPath $server -Force
+    Compress-ZipArchive "server/*" -DestinationPath $server -Force
+    Move-Item "$server.zip" $server -Force
 
     Remove-Item "server" -Recurse -Force
 }
@@ -139,7 +141,8 @@ if ($minecraftVersion -eq "1.16.5" -and $ServerWrapperProfile) {
         $profileJson.classPath += $libPath -replace "\\", "/"
     }
 
-    Compress-Archive "server/*" -DestinationPath $server -Force
+    Compress-ZipArchive "server/*" -DestinationPath $server -Force
+    Move-Item "$server.zip" $server -Force
 
     Remove-Item "server" -Recurse -Force
 }
@@ -200,7 +203,8 @@ Get-ChildItem libraries -Recurse | Where-Object { $_.Name -match "^(authlib.+\.j
 
     Expand-Archive $authLibPatch -DestinationPath "authlib" -Force
 
-    Compress-Archive "authlib/*" -DestinationPath $_ -Force
+    Compress-ZipArchive "authlib/*" -DestinationPath $_ -Force
+    Move-Item "$_.zip" $_ -Force
 
     Remove-Item "authlib" -Recurse -Force
 }
