@@ -44,9 +44,9 @@ $versions = $versions | Where-Object {
     $result
 }
 
-$versions | ForEach-Object { 
+$versions | ForEach-Object {
     [PSCustomObject]@{
-        version     = $_.version.Contains("-") ? [version]($_.version -split "-")[1] : [version]$_.version
+        version     = $_.version -match "^\d+\.\d+\.\d+\.\d+.*$" ? [version]$_.version : [Management.Automation.SemanticVersion]$_.version
         longVersion = $_.version
         releaseTime = $_.releaseTime
     }
