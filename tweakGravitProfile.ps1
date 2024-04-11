@@ -25,7 +25,7 @@ if ($minecraftVersion -ge "1.14.0" -and $fabricLoaderVersion) {
     Invoke-GitGradleBuild "https://github.com/FabricMC/fabric-loader.git" "tags/$fabricLoaderVersion" "$MirrorUrl/patches/FabricLoader.patch" "libraries/net/fabricmc/fabric-loader/$fabricLoaderVersion/fabric-loader-$fabricLoaderVersion.jar"
 }
 
-if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -ge "1.18.0") {
+if ((Get-ProfileComponentVersion "net.minecraftforge") -and $minecraftVersion -ge "1.18.0") {
     $secureJarHandler = Get-ChildItem libraries -Recurse -Filter "securejarhandler-*.jar"
 
     $manifest = Get-ZipEntry $secureJarHandler -Include "META-INF/MANIFEST.MF" | Get-ZipEntryContent
@@ -34,7 +34,7 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 
     Invoke-GitGradleBuild "https://github.com/McModLauncher/securejarhandler.git" $gitCommit ($secureJarHandler -like "*securejarhandler-2.1.2*.jar" ? "https://mirror.gravitlauncher.com/5.5.x/patches/forge/securejarhandler-2.1.27.patch" : "https://mirror.gravitlauncher.com/5.5.x/patches/forge/securejarhandler.patch") $secureJarHandler
 }
-elseif ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Main" -and $minecraftVersion -eq "1.16.5") {
+elseif ((Get-ProfileComponentVersion "net.minecraftforge") -and $minecraftVersion -eq "1.16.5") {
     $modLauncher = Get-ChildItem libraries -Recurse -Filter "modlauncher*.jar"
 
     Invoke-RestMethod "https://github.com/RetroForge/modlauncher/releases/download/1.8.3-1.16.5-patched1/modlauncher-8.1.3.jar" -OutFile $modLauncher

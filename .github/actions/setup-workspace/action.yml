@@ -24,7 +24,7 @@ runs:
     
     - uses: actions/setup-java@v4
       name: Setup Java 16
-      if: ${{ inputs.uid == 'net.minecraftforge' && inputs.version == '1.18.2' }}
+      if: ${{ (inputs.uid == 'net.minecraftforge' || inputs.uid == 'io.izzel.arclight') && inputs.version == '1.18.2' }}
       with:
         java-version: '16'
         distribution: 'temurin'
