@@ -392,14 +392,20 @@ if ($profileJson.mainClass -eq "io.github.zekerzhayard.forgewrapper.installer.Ma
 }
 
 if (!$SkipGravitTweaks) {
-    $profileJson.classPath = $profileJson.classPath | ForEach-Object { 
-        $versionPattern = [regex]::Escape(($_ | Split-Path | Split-Path -Leaf))
+    $profileJson.classPath = $profileJson.classPath | ForEach-Object {
+        $version = $_ | Split-Path | Split-Path -Leaf
+        $versionPattern = [regex]::Escape($version)
+
+        # netty has a weird versioning scheme 4.1.9.Final
+        $version = $version -replace "^(\d+\.\d+\.\d+)\.([a-zA-Z]+)$", '$1-$2'
+
         [PSCustomObject]@{
             Path     = $_;
             Name     = $_ | Split-Path | Split-Path -Parent;
-            Artifact = $_ | Split-Path -LeafBase | ForEach-Object { $_ -replace ".*-$versionPattern-?", "" }
+            Artifact = $_ | Split-Path -LeafBase | ForEach-Object { $_ -replace ".*-$versionPattern-?", "" };
+            Version  = $version -match "^\d+\.\d+\.\d+\.\d+.*$" ? [version]($version.Split("-")[0]) : [Management.Automation.SemanticVersion]$version
         } 
-    } | Sort-Object -Property Name, Artifact -Unique | ForEach-Object { $_.Path }
+    } | Sort-Object -Property Name, Artifact -Unique | Sort-Object -Property Version -Descending | ForEach-Object { $_.Path }
 
     Write-Debug "Running GravitTweaks"
     . $PSScriptRoot\tweakGravitProfile.ps1 $profileJson
