@@ -148,7 +148,7 @@ if ($minecraftVersion -eq "1.16.5" -and $ServerWrapperProfile) {
 }
 
 if (!$ServerWrapperProfile) {
-    foreach ($os in "mustdie", "linux", "macos") {
+    foreach ($os in "mustdie", "linux", "macosx") {
         foreach ($arch in "x86-64", "x86", "arm64") {
             New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
         }
