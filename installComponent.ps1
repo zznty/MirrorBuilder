@@ -142,8 +142,8 @@ function Get-Library {
         Invoke-RestMethod -Uri $url -OutFile temp
 
         Get-ZipEntry temp -Exclude "META-INF/*" -Type Archive | ForEach-Object { 
-            $path = "natives/$($_.RelativePath -replace "windows", "mustdie" -replace "osx", "macos" -replace "x64", "x86-64")"
-            $path = $path -split "(natives/(macos|linux|mustdie)/(arm32|arm64|x86|x86-64))/"
+            $path = "natives/$($_.RelativePath -replace "windows", "mustdie" -replace "osx|macos", "macosx" -replace "x64", "x86-64")"
+            $path = $path -split "(natives/(macosx|linux|mustdie)/(arm32|arm64|x86|x86-64))/"
             $path = Join-Path $path[1] -ChildPath (Split-Path -Leaf $path[-1])
 
             New-Item -ItemType Directory ($path | Split-Path) -Force | Out-Null
@@ -182,7 +182,7 @@ function Get-NativeLibraries {
 
         $parts = $nativeLibrary.Name.Split("-")
 
-        $dir = "natives/$($parts[0] -replace "windows", "mustdie" -replace "osx", "macos")/$($parts.Length -gt 1 ? $parts[1] : "x86-64")"
+        $dir = "natives/$($parts[0] -replace "windows", "mustdie" -replace "osx|macos", "macosx")/$($parts.Length -gt 1 ? $parts[1] : "x86-64")"
 
         New-Item -Type Directory $dir -Force | Out-Null
 

@@ -39,27 +39,27 @@ function Invoke-GitGradleBuild {
         $outputPath
     )
     $buildPath = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -Type Directory $_ }
-    
+
     git clone --mirror $repoUrl "$buildPath/.git"
     git -C "$buildPath" config --unset core.bare
     git -C "$buildPath" checkout $repoTag
     git -C "$buildPath" switch -c branch
 
     $patchUrl = [Uri]::IsWellFormedUriString($patchUrl, [UriKind]::Absolute) ? $patchUrl : "$MirrorUrl/$patchUrl"
-    
+
     Invoke-RestMethod $patchUrl | git -C "$buildPath" apply -3 | Out-Null
 
     if (Test-Path "$buildPath/build.gradle") {
         (Get-Content "$buildPath/build.gradle") | ForEach-Object { $_ -replace "fromTag .*$", "" } | Set-Content "$buildPath/build.gradle"
     }
-    
+
     $gradle = "$buildPath/gradlew"
     if ($IsWindows) {
         $gradle += ".bat"
     }
-    
+
     Write-Debug "Running gradle build"
-    
+
     $prevPwd = $PWD
 
     Set-Location $buildPath
@@ -67,7 +67,7 @@ function Invoke-GitGradleBuild {
     if (!$IsWindows) {
         chmod +x $gradle
     }
-    
+
     & $gradle build
 
     Set-Location $prevPwd
@@ -75,11 +75,11 @@ function Invoke-GitGradleBuild {
     if ($LastExitCode -ne 0) {
         throw "Gradle build failed"
     }
-    
+
     $jarPath = Get-ChildItem (Join-Path $buildPath -ChildPath "build/libs/") -Exclude "*-sources.jar", "*-javadoc.jar" | Select-Object -First 1
-    
+
     Copy-Item $jarPath -Force -Destination $outputPath
-    
+
     Remove-Item $buildPath -Recurse -Force -ErrorAction Ignore
 }
 
@@ -157,7 +157,7 @@ if ($minecraftVersion -le "1.12.2" -and (Get-ProfileComponentVersion "net.minecr
 }
 
 if ($minecraftVersion -eq "1.7.10") {
-    # 1.7.10 meta uses log4j-2.0-beta9-fixed which is not compatible with gravit authlib 
+    # 1.7.10 meta uses log4j-2.0-beta9-fixed which is not compatible with gravit authlib
     $version = "2.17.2"
     $corePath = "libraries/org/apache/logging/log4j/log4j-core/$version/log4j-core-$version.jar"
     $apiPath = "libraries/org/apache/logging/log4j/log4j-api/$version/log4j-api-$version.jar"
@@ -182,7 +182,7 @@ if ($minecraftVersion -eq "1.7.10") {
     $profileJson.classPath += $helpersPath -replace "\\", "/"
 }
 
-foreach ($os in "mustdie", "linux", "macos") {
+foreach ($os in "mustdie", "linux", "macosx") {
     foreach ($arch in "x86-64", "x86", "arm64") {
         New-Item -Type Directory "natives/$os/$arch" -Force | Out-Null
     }
