@@ -21,46 +21,56 @@ jobs:
         strategy:
             matrix:
                 version: ["1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1"]
-                component: ["net.minecraftforge", "net.fabricmc.intermediary"]
+                component: ["net.minecraftforge", "net.fabricmc.fabric-loader"]
                 lwjgl3: [false]
                 exclude:
                   - version: "1.7.10"
-                    component: "net.fabricmc.intermediary"
+                    component: "net.fabricmc.fabric-loader"
                   - version: "1.12.2"
-                    component: "net.fabricmc.intermediary"
+                    component: "net.fabricmc.fabric-loader"
                   - version: "1.16.5"
                     component: "net.minecraftforge" # TODO bring back "1.16.5" when installer is updated to 2.2
                 include:
                   - version: "1.7.10"
                     component: "net.minecraftforge"
                     lwjgl3: true
-                  - version: "1.12.2"
-                    component: "net.minecraftforge"
-                    lwjgl3: true
+#                  - version: "1.12.2" # TODO bring back cleanroom when they will go at least out of exp branch
+#                    component: "net.minecraftforge"
+#                    lwjgl3: true
 
         steps:
             - uses: actions/checkout@v3
 
-            - name: Install PSCompression
+            - uses: actions/setup-java@v4
+              name: Setup Java 17
+              with:
+                java-version: '17'
+                distribution: 'temurin'
+
+            - name: Download InstallUtil
               shell: pwsh
               run: |
-                Set-PSRepository PSGallery -InstallationPolicy Trusted
-                Install-Module PSCompression
+                Invoke-RestMethod "https://mirror.zznty.ru/installutil/installutil" -OutFile "installutil"
+                chmod +x installutil
+
+            - name: Create component directory
+              shell: pwsh
+              run: New-Item -Type Directory -Force component
 
             - name: Download MMC patches
               if : ${{ matrix.lwjgl3 }}
               shell: pwsh
               run: |
-                New-Item -Type Directory -Force "component/mmc" | Out-Null
                 if ("${{ matrix.version }}" -eq "1.7.10") {
                   $tag = gh release -R "GTNewHorizons/lwjgl3ify" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
 
-                  Invoke-RestMethod "https://github.com/GTNewHorizons/lwjgl3ify/releases/download/$tag/lwjgl3ify-$tag-multimc.zip" -OutFile "mmc.zip"
-                  Expand-Archive -Path "mmc.zip" -DestinationPath "component/mmc"
-                  Remove-Item "mmc.zip"
+                  Invoke-RestMethod "https://github.com/GTNewHorizons/lwjgl3ify/releases/download/$tag/lwjgl3ify-$tag-multimc.zip" -OutFile "component/mmc.zip"
                 }
                 elseif ("${{ matrix.version }}" -eq "1.12.2") {
+                  New-Item -Type Directory -Force "component/mmc" | Out-Null
                   gh run -R "CleanroomMC/CleanroomMMC" download -D "component/mmc" -n "Cleanroom_MMC"
+                  7z a -sdel "component/mmc.zip" "component/mmc/*"
+                  Remove-Item -Recurse -Force "component/mmc"
                 }
                 else {
                   Write-Error "Unsupported version ${{ matrix.version }}"
@@ -75,13 +85,13 @@ jobs:
                   # Workaround for 1.7.10, lwjgl3ify patches are not using forge uid
                   $componentUid = "${{ matrix.version }}" -eq "1.7.10" ? "me.eigenraven.lwjgl3ify.forgepatches" : "${{ matrix.component }}"
 
-                  $version = ./mmcIndex.ps1 $componentUid "component/mmc"
+                  $version = ./installutil component meta $componentUid --meta "mmc://$(Resolve-Path 'component/mmc.zip')"
                 }
                 elseif ("${{ matrix.component }}" -eq "net.minecraftforge" -and "${{ matrix.version }}" -eq "1.16.5") {
                   $version = "36.2.41" # https://github.com/RetroForge/MinecraftForge/releases/tag/36.2.41-1.16.5-patched1
                 }
                 else {
-                  $version = ./componentsIndex.ps1 "${{ matrix.component }}" -Requires @{ "net.minecraft" = "${{ matrix.version }}" }
+                  $version = ./installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }}
                 }
 
                 "version=$version" >> $env:GITHUB_OUTPUT
@@ -109,7 +119,7 @@ jobs:
                   $component = "me.eigenraven.lwjgl3ify.forgepatches"
                 }
 
-                $version = ./profileComponentVersion.ps1 "${{ matrix.version }}-${{ steps.suffix.outputs.value }}" $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients"
+                $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json"
 
                 if ("${{ inputs.force }}" -eq "true") {
                   $version = $null
@@ -117,28 +127,17 @@ jobs:
 
                 "version=$version" >> $env:GITHUB_OUTPUT
 
-            - name: Setup workspace
-              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
-              uses: ./.github/actions/setup-workspace
-              with:
-                uid: ${{ matrix.component }}
-                version: ${{ matrix.version }}
-                lwjgl3: ${{ matrix.lwjgl3 }}
-
-            - name: Install GTNH lwjgl3ify forge patches
-              if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}
-              shell: pwsh
-              working-directory: component
-              run: |
-                ../installComponent.ps1 "me.eigenraven.lwjgl3ify.forgepatches" -MMCPatch -SkipGravitTweaks -ChildProcess
-
             - name: Install Component
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
-              uses: ./.github/actions/install-component
-              with:
-                uid: ${{ matrix.component }}
-                version: ${{ steps.meta.outputs.version }}
-                use-mmc-cache: ${{ matrix.lwjgl3 }}
+              shell: pwsh
+              working-directory: component
+              run: |                
+                if (Test-Path component/mmc.zip) {
+                    ../installutil install ${{ matrix.component }} --meta "mmc://$(Resolve-Path 'component/mmc.zip')" --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
+                }
+                else {
+                    ../installutil install ${{ matrix.component }} net.minecraft==${{ matrix.version }} --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
+                }
 
             - name: Download recommended mods for 1.7.10-lwjgl3ify
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version && matrix.lwjgl3 && matrix.version == '1.7.10' }}
