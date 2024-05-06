@@ -129,7 +129,7 @@ $arclightVersions | ForEach-Object {
         order         = 6;
         type          = $jarManifest.'Implementation-Version' -contains "snapshot" ? "snapshot" : "release";
         releaseTime   = Get-Date $jarManifest.'Implementation-Timestamp' -Format "yyyy-MM-ddTHH:mm:ss";
-        compatibleJavaMajors = 17
+        compatibleJavaMajors = @(17)
     } | ConvertTo-Json -Depth 100 | Set-Content "$uid/$($_.longVersion).json"
 
     Remove-Item "temp.jar"
