@@ -137,7 +137,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
                     $_
                 });
             libraries          = @([PSCustomObject]@{
-                    name      = "io.github.zekerzhayard:ForgeWrapper:zznty"
+                    name      = "io.github.zekerzhayard:ForgeWrapper:1.0-zznty"
                     downloads = [PSCustomObject]@{
                         artifact = [PSCustomObject]@{
                             url = "https://github.com/zznty/ForgeWrapper/releases/latest/download/ForgeWrapper.jar";
