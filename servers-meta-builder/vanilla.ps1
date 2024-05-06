@@ -114,5 +114,5 @@ $mojangVersions.versions | ForEach-Object {
 
     $metaJson | ConvertTo-Json -Depth 100 | Set-Content "$uid/$($_.id).json"
 
-    Remove-Item -Path "$pwd/*" -Force -Exclude $uid | Out-Null
+    Remove-Item -Path "$pwd/*" -Force -Recurse -Exclude $uid | Out-Null
 }
