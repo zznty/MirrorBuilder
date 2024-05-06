@@ -120,7 +120,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
                 }
             );
             mainClass          = "io.github.zekerzhayard.forgewrapper.installer.Main";
-            minecraftArguments = "--launchTarget", ($mcVersion -ge "1.18.0" ? "forgeserver" : "fmlserver"), "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", ""
+            minecraftArguments = ("--launchTarget", ($mcVersion -ge "1.18.0" ? "forgeserver" : "fmlserver"), "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", "") -join " "
             mavenFiles         = @([PSCustomObject]@{
                     name      = "net.minecraftforge:forge:$($forgeVersion.longversion):installer";
                     downloads = [PSCustomObject]@{
@@ -152,7 +152,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
         }
 
         if ($mcVersion -eq "1.16.5") {
-            $metaJson.minecraftArguments += "--gameDir", "."
+            $metaJson.minecraftArguments += ("--gameDir", ".") -join " "
         }
     }
 
