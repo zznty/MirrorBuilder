@@ -94,7 +94,7 @@ $arclightVersions | ForEach-Object {
                 $parts[2] = $parts[2].Split("@")[0]
                 $extension = "zip"
             }
-    
+
             $dirArray = $parts[0].Split(".") + $parts[1] + $parts[2];
             if ($parts.Length -gt 3) {
                 $fileName = "$($parts[1])-$($parts[2])-$($parts[3]).$extension"
@@ -126,6 +126,7 @@ $arclightVersions | ForEach-Object {
             }
         };
         mainClass     = $jarManifest.'Main-Class';
+        minecraftArguments = '';
         order         = 6;
         type          = $jarManifest.'Implementation-Version' -contains "snapshot" ? "snapshot" : "release";
         releaseTime   = Get-Date $jarManifest.'Implementation-Timestamp' -Format "yyyy-MM-ddTHH:mm:ss";
