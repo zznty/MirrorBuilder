@@ -157,7 +157,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
     }
 
     if ($mcVersion  -ge "1.18.0") {
-        $metaJson.compatibleJavaMajors = 17
+        $metaJson.compatibleJavaMajors = 17, 21
     }
     elseif ($mcVersion -ge "1.17.0") {
         $metaJson.compatibleJavaMajors = 16, 17
@@ -166,7 +166,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
         $metaJson.compatibleJavaMajors = 8, 11, 16, 17
     }
     else {
-        $metaJson.compatibleJavaMajors = 8
+        $metaJson.compatibleJavaMajors = @(8)
     }
 
     $metaJson | ConvertTo-Json -Depth 100 | Set-Content "$uid/$($forgeVersion.version).json"
