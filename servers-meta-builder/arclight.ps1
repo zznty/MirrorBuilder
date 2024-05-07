@@ -10,12 +10,11 @@ New-Item -ItemType Directory $uid -Force | Out-Null
 $arclightBranches = Invoke-RestMethod "https://files.hypoglycemia.icu/v1/files/arclight/minecraft"
 
 $arclightVersions = $arclightBranches.files | ForEach-Object {
-    $versionsStable = Invoke-RestMethod "$($_.link)/versions-stable/"
     $versionsSnapshot = Invoke-RestMethod "$($_.link)/versions-snapshot/"
 
     $mcVersion = $_.name
 
-    ($versionsStable.files + $versionsSnapshot.files) | ForEach-Object {
+    $versionsSnapshot.files | ForEach-Object {
         Add-Member -InputObject $_ -NotePropertyName "mcVersion" -NotePropertyValue $mcVersion
 
         $_
@@ -25,9 +24,10 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
 
     $mcVersion = $_.mcVersion
 
-    $version.files | Where-Object { $_.name -eq "forge" } | ForEach-Object {
+    $version.files | ForEach-Object {
         Add-Member -InputObject $_ -NotePropertyName "mcVersion" -NotePropertyValue $mcVersion
-        Add-Member -InputObject $_ -NotePropertyName "longVersion" -NotePropertyValue "$mcVersion-$($_.key.Split("/")[-2])-$($_.name)"
+        Add-Member -InputObject $_ -NotePropertyName "loaderType" -NotePropertyValue $_.name
+        Add-Member -InputObject $_ -NotePropertyName "longVersion" -NotePropertyValue "$($_.key.Split("/")[-2])-$($_.name)"
 
         $_
     }
@@ -48,7 +48,7 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
         [PSCustomObject]@{
             releaseTime = $_.'last-modified';
             version     = $_.longVersion
-            recommended = $_.key -like "/arclight/branches/*/versions-stable/*/forge"
+            recommended = $false
             sha1        = $_.permlink -replace "^.*objects/", ""
             requires    = @(
                 [PSCustomObject]@{
@@ -69,6 +69,25 @@ $arclightVersions | ForEach-Object {
 
     $installerManifest = Get-ZipEntry "temp.jar" -Include "META-INF/installer.json" | Get-ZipEntryContent | ConvertFrom-Json -AsHashtable
 
+    if ($_.loaderType -eq "forge") {
+        $dependencyComponent = [PSCustomObject]@{
+            uid    = "net.minecraftforge";
+            equals = $installerManifest.installer.forge
+        }
+    }
+    elseif ($_.loaderType -eq "fabric") {
+        $dependencyComponent = [PSCustomObject]@{
+            uid    = "net.fabricmc.fabric-loader";
+            equals = $installerManifest.installer.fabricLoader
+        }
+    }
+    elseif ($_.loaderType -eq "neoforge") {
+        $dependencyComponent = [PSCustomObject]@{
+            uid    = "net.neoforged";
+            equals = $installerManifest.installer.neoforge
+        }
+    }
+
     $jarManifest = Get-JarManifest "temp.jar"
 
     @{
@@ -81,10 +100,7 @@ $arclightVersions | ForEach-Object {
                 uid    = "net.minecraft";
                 equals = $installerManifest.installer.minecraft
             },
-            [PSCustomObject]@{
-                uid    = "net.minecraftforge";
-                equals = $installerManifest.installer.forge
-            }
+            $dependencyComponent
         );
         libraries     = $installerManifest.libraries.GetEnumerator() | ForEach-Object {
             $parts = $_.Key.Split(":")
