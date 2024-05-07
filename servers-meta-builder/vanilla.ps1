@@ -113,4 +113,6 @@ $mojangVersions.versions | ForEach-Object {
     }
 
     $metaJson | ConvertTo-Json -Depth 100 | Set-Content "$uid/$($_.id).json"
+
+    Remove-Item "temp.jar"
 }
