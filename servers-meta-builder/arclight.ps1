@@ -30,7 +30,7 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
         Add-Member -InputObject $_ -NotePropertyName "longVersion" -NotePropertyValue "$($_.key.Split("/")[-2])-$($_.name)"
 
         $_
-    }
+    } | Where-Object { $_.loaderType -eq "forge" }
 }
 
 @{
@@ -54,6 +54,9 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
                 [PSCustomObject]@{
                     uid    = "net.minecraft";
                     equals = $_.mcVersion
+                }
+                [PSCustomObject]@{
+                    uid    = $_.loaderType -eq "forge" ? "net.minecraftforge" : $_.loaderType -eq "fabric" ? "net.fabricmc.fabric-loader" : "net.neoforged";
                 }
             )
         }
