@@ -32,4 +32,20 @@ function Get-JarManifest {
     return $manifest
 }
 
-Export-ModuleMember -Function Get-JarManifest
+function Get-UpstreamComponent {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ComponentUid
+    )
+
+    Invoke-RestMethod "https://github.com/PrismLauncher/meta-launcher/archive/refs/heads/master.zip" -OutFile "temp.zip"
+
+    Get-ZipEntry "temp.zip" -Include "meta-launcher-master/$ComponentUid*" | Expand-ZipEntry
+
+    Get-ChildItem -Path "meta-launcher-master" -Directory | Move-Item -Destination "." -Force
+
+    Remove-Item -Path "meta-launcher-master","temp.zip" -Recurse -Force
+}
+
+Export-ModuleMember -Function Get-JarManifest,Get-UpstreamComponent
