@@ -119,7 +119,7 @@ jobs:
                   $component = "me.eigenraven.lwjgl3ify.forgepatches"
                 }
 
-                $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json"
+                $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy
 
                 if ("${{ inputs.force }}" -eq "true") {
                   $version = $null
