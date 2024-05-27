@@ -79,19 +79,20 @@ jobs:
 
             - name: Get Latest Component Version
               id: meta
+              working-directory: component
               shell: pwsh
               run: |
                 if ("${{ matrix.lwjgl3 }}" -eq "true") {
                   # Workaround for 1.7.10, lwjgl3ify patches are not using forge uid
                   $componentUid = "${{ matrix.version }}" -eq "1.7.10" ? "me.eigenraven.lwjgl3ify.forgepatches" : "${{ matrix.component }}"
 
-                  $version = ./installutil component meta $componentUid --meta "mmc://$(Resolve-Path 'component/mmc.zip')"
+                  $version = ../installutil component meta $componentUid --meta "mmc://$(Resolve-Path 'mmc.zip')"
                 }
                 elseif ("${{ matrix.component }}" -eq "net.minecraftforge" -and "${{ matrix.version }}" -eq "1.16.5") {
                   $version = "36.2.41" # https://github.com/RetroForge/MinecraftForge/releases/tag/36.2.41-1.16.5-patched1
                 }
                 else {
-                  $version = ./installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }}
+                  $version = ../installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }}
                 }
 
                 "version=$version" >> $env:GITHUB_OUTPUT
@@ -119,10 +120,11 @@ jobs:
                   $component = "me.eigenraven.lwjgl3ify.forgepatches"
                 }
 
-                $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy
-
                 if ("${{ inputs.force }}" -eq "true") {
                   $version = $null
+                }
+                else {
+                  $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/clients/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy
                 }
 
                 "version=$version" >> $env:GITHUB_OUTPUT
@@ -132,8 +134,8 @@ jobs:
               shell: pwsh
               working-directory: component
               run: |                
-                if (Test-Path component/mmc.zip) {
-                    ../installutil install ${{ matrix.component }} --meta "mmc://$(Resolve-Path 'component/mmc.zip')" --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
+                if (Test-Path mmc.zip) {
+                    ../installutil install ${{ matrix.component }} --meta "mmc://$(Resolve-Path 'mmc.zip')" --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
                 }
                 else {
                     ../installutil install ${{ matrix.component }} net.minecraft==${{ matrix.version }} --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
@@ -174,6 +176,7 @@ jobs:
               working-directory: component
               run: |
                 rm -rf mmc
+                rm -f mmc.zip
                 mv "profile.json" "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json"
                 7z a -sdel "${{ matrix.version }}-${{ steps.suffix.outputs.value }}.zip" libraries/ mods/ natives/
             
