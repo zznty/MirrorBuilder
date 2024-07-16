@@ -52,7 +52,11 @@ jobs:
                   Remove-Item "mmc.zip"
                 }
                 elseif ("${{ matrix.version }}" -eq "1.12.2") {
-                  gh run -R "CleanroomMC/CleanroomMMC" download -D "component/mmc" -n "Cleanroom_MMC"
+                  $tag = gh release -R "CleanroomMC/Cleanroom" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+
+                  Invoke-RestMethod "https://github.com/CleanroomMC/Cleanroom/releases/download/$tag/Cleanroom-MMC-instance-$tag.zip" -OutFile "mmc.zip"
+                  Expand-Archive -Path "mmc.zip" -DestinationPath "component/mmc"
+                  Remove-Item "mmc.zip"
                 }
                 else {
                   Write-Error "Unsupported version ${{ matrix.version }}"
