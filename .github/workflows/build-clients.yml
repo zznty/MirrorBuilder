@@ -28,8 +28,6 @@ jobs:
                     component: "net.fabricmc.intermediary"
                   - version: "1.12.2"
                     component: "net.fabricmc.intermediary"
-                  - version: "1.16.5"
-                    component: "net.minecraftforge"
                 include:
                   - version: "1.7.10"
                     component: "net.minecraftforge"
