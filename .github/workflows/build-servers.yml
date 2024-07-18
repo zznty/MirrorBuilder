@@ -24,8 +24,6 @@ jobs:
                 exclude:
                   - version: "1.16.5"
                     component: "io.izzel.arclight" # arclight requires forge 36.2.39 while only 36.2.41 is available
-                  - version: "1.16.5"
-                    component: "net.minecraftforge" # TODO bring back "1.16.5" when installer is updated to 2.2
 
         steps:
             - uses: actions/checkout@v3
