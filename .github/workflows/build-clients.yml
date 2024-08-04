@@ -32,9 +32,9 @@ jobs:
                   - version: "1.7.10"
                     component: "net.minecraftforge"
                     lwjgl3: true
-#                  - version: "1.12.2" # TODO bring back cleanroom when they will go at least out of exp branch
-#                    component: "net.minecraftforge"
-#                    lwjgl3: true
+                  - version: "1.12.2"
+                    component: "net.minecraftforge"
+                    lwjgl3: true
 
         steps:
             - uses: actions/checkout@v3
@@ -65,10 +65,9 @@ jobs:
                   Invoke-RestMethod "https://github.com/GTNewHorizons/lwjgl3ify/releases/download/$tag/lwjgl3ify-$tag-multimc.zip" -OutFile "component/mmc.zip"
                 }
                 elseif ("${{ matrix.version }}" -eq "1.12.2") {
-                  New-Item -Type Directory -Force "component/mmc" | Out-Null
-                  gh run -R "CleanroomMC/CleanroomMMC" download -D "component/mmc" -n "Cleanroom_MMC"
-                  7z a -sdel "component/mmc.zip" "component/mmc/*"
-                  Remove-Item -Recurse -Force "component/mmc"
+                  $tag = gh release -R "CleanroomMC/Cleanroom" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
+
+                  Invoke-RestMethod "https://github.com/CleanroomMC/Cleanroom/releases/download/$tag/Cleanroom-MMC-instance-$tag.zip" -OutFile "component/mmc.zip"
                 }
                 else {
                   Write-Error "Unsupported version ${{ matrix.version }}"
@@ -167,7 +166,7 @@ jobs:
               run: |
                 # Fugue mod (compat)
                 $tag = gh release -R "CleanroomMC/Fugue" list -L 1 --json tagName | ConvertFrom-Json | Select-Object -ExpandProperty tagName
-                curl -sLO "https://github.com/CleanroomMC/Fugue/releases/download/$tag/Fugue-1.12.2-$tag.jar"
+                curl -sLO "https://github.com/CleanroomMC/Fugue/releases/download/$tag/+Fugue-1.12.2-$tag.jar"
             
             - name: Build files to upload
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
