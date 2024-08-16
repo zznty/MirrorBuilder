@@ -135,7 +135,7 @@ jobs:
                     ../installutil install ${{ matrix.component }} --meta "mmc://$(Resolve-Path 'mmc.zip')" --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
                 }
                 else {
-                    ../installutil install ${{ matrix.component }} net.minecraft==${{ matrix.version }} --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
+                    ../installutil install ${{ matrix.component }}==${{ steps.meta.outputs.version }} net.minecraft==${{ matrix.version }} --mirror "https://mirror.gravitlauncher.com/${{ env.LAUNCHER_VERSION }}/"
                 }
 
             - name: Download recommended mods for 1.7.10-lwjgl3ify
