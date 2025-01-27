@@ -185,3 +185,5 @@ jobs:
                 AWS_ACCESS_KEY_ID: ${{ secrets.S3_KEY_ID }}
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_KEY }}
                 AWS_DEFAULT_REGION: ru-central1
+                AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+                AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
