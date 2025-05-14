@@ -8,7 +8,11 @@ $forgeVersions = Get-Content "$PSScriptRoot/meta-upstream/neoforge/derived_index
 
 foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
             $forgeParts = $_ -replace "_", "-" -split "-"
-            return [version]$forgeParts[0] -lt "1.21.0"
+            try {
+                return [version]$forgeParts[0] -lt "1.21.0"
+            } catch { # skip snapshots ans stuff, dont have intentions to support those that violate version spec
+                return $true
+            }
         })) {
     Write-Debug "Skipping $badVersion"
     $forgeVersions.versions.Remove($badVersion)
