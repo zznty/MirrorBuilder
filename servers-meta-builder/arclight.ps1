@@ -30,7 +30,7 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
         Add-Member -InputObject $_ -NotePropertyName "longVersion" -NotePropertyValue "$($_.key.Split("/")[-2])-$($_.name)"
 
         $_
-    } | Where-Object { $_.loaderType -eq "forge" }
+    }
 }
 
 @{
@@ -53,10 +53,10 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
             requires    = @(
                 [PSCustomObject]@{
                     uid    = "net.minecraft";
-                    equals = $_.mcVersion
+                    equals = [string]$_.mcVersion
                 }
                 [PSCustomObject]@{
-                    uid    = $_.loaderType -eq "forge" ? "net.minecraftforge" : $_.loaderType -eq "fabric" ? "net.fabricmc.fabric-loader" : "net.neoforged";
+                    uid = $_.loaderType -eq "forge" ? "net.minecraftforge" : $_.loaderType -eq "fabric" ? "net.fabricmc.fabric-loader" : "net.neoforged";
                 }
             )
         }
@@ -94,18 +94,18 @@ $arclightVersions | ForEach-Object {
     $jarManifest = Get-JarManifest "temp.jar"
 
     @{
-        formatVersion = 1;
-        name          = "ArcLight";
-        uid           = $uid;
-        version       = $_.longVersion
-        requires      = @(
+        formatVersion        = 1;
+        name                 = "ArcLight";
+        uid                  = $uid;
+        version              = $_.longVersion
+        requires             = @(
             [PSCustomObject]@{
                 uid    = "net.minecraft";
                 equals = $installerManifest.installer.minecraft
             },
             $dependencyComponent
         );
-        libraries     = $installerManifest.libraries.GetEnumerator() | ForEach-Object {
+        libraries            = $installerManifest.libraries.GetEnumerator() | ForEach-Object {
             $parts = $_.Key.Split(":")
 
             $extension = "jar"
@@ -134,7 +134,7 @@ $arclightVersions | ForEach-Object {
             }
         };
 
-        mainJar       = [PSCustomObject]@{
+        mainJar              = [PSCustomObject]@{
             name      = "io.izzel.arclight:server:$($_.longVersion)";
             downloads = [PSCustomObject]@{
                 artifact = [PSCustomObject]@{
@@ -144,12 +144,12 @@ $arclightVersions | ForEach-Object {
                 }
             }
         };
-        mainClass     = $jarManifest.'Main-Class';
-        minecraftArguments = '';
-        order         = 6;
-        type          = $jarManifest.'Implementation-Version' -contains "snapshot" ? "snapshot" : "release";
-        releaseTime   = Get-Date $jarManifest.'Implementation-Timestamp' -Format "yyyy-MM-ddTHH:mm:ss";
-        compatibleJavaMajors = @(17)
+        mainClass            = $jarManifest.'Main-Class';
+        minecraftArguments   = '';
+        order                = 6;
+        type                 = $jarManifest.'Implementation-Version' -contains "snapshot" ? "snapshot" : "release";
+        releaseTime          = Get-Date $jarManifest.'Implementation-Timestamp' -Format "yyyy-MM-ddTHH:mm:ss";
+        compatibleJavaMajors = [version]$installerManifest.installer.minecraft -gt "1.20.0" ? @(21) : @(17)
     } | ConvertTo-Json -Depth 100 | Set-Content "$uid/$($_.longVersion).json"
 
     Remove-Item "temp.jar"

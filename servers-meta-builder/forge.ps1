@@ -17,7 +17,7 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
                     return $true
                 }
             }
-            return [version]$forgeParts[0] -ge "1.20.3"
+            return $false
         })) {
     Write-Debug "Skipping $badVersion"
     $forgeVersions.versions.Remove($badVersion)
@@ -105,6 +105,20 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
 
         $versionInfo = Get-Content "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.Key).json" | ConvertFrom-Json
 
+        $launchTagret = "fmlserver"
+
+        if ($mcVersion -ge "1.20.3") {
+            $launchTagret = "forge_server"
+        }
+        elseif ($mcVersion -ge "1.18.0") {
+            $launchTagret = "forgeserver"
+        }
+
+        $minecraftArguments = "--launchTarget", $launchTagret
+        if ($mcVersion -lt "1.20.3") {
+            $minecraftArguments += "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", ""
+        }
+
         $metaJson = @{
             formatVersion      = 1;
             name               = "Forge";
@@ -120,7 +134,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
                 }
             );
             mainClass          = "io.github.zekerzhayard.forgewrapper.installer.Main";
-            minecraftArguments = ("--launchTarget", ($mcVersion -ge "1.18.0" ? "forgeserver" : "fmlserver"), "--fml.forgeVersion", $forgeVersion.version, "--fml.mcVersion", $forgeVersion.mcversion, "--fml.forgeGroup", "net.minecraftforge", "--fml.mcpVersion", ($installerProfile.data.MCP_VERSION.server ?? $versionInfo.arguments.game[-1]) -replace "'", "") -join " "
+            minecraftArguments = $minecraftArguments -join " "
             mavenFiles         = @([PSCustomObject]@{
                     name      = "net.minecraftforge:forge:$($forgeVersion.longversion):installer";
                     downloads = [PSCustomObject]@{
@@ -146,6 +160,12 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
                 }) + ($versionInfo.libraries | Where-Object { $_.name -notlike "org.apache.logging.log4j*" } | ForEach-Object {
                     if ($_.name -eq "net.minecraftforge:forge:$($forgeVersion.longversion)") {
                         $_.downloads.artifact.url = "https://maven.minecraftforge.net/net/minecraftforge/forge/$($forgeVersion.longversion)/forge-$($forgeVersion.longversion)-universal.jar"
+                    }
+                    elseif ($_.downloads.artifact.url -eq "") {
+                        # usually its only forge client jar
+                        # ofc other data like hash would not be valid anymore
+                        # todo: actually fix this if hash checks are gonna be implemented somewhere
+                        $_.name = "net.minecraftforge:forge:$($forgeVersion.longversion):server"
                     }
                     $_
                 })
