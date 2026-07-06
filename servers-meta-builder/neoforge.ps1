@@ -46,7 +46,7 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
     uid           = $uid;
     versions      = $forgeVersions.versions.Values | ForEach-Object {
         [PSCustomObject]@{
-            releaseTime = (Test-Path "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json") ? (Get-Content "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) : $null;
+            releaseTime = if (Test-Path "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" };
             version     = $_.longversion
             recommended = $_.recommended
             sha1        = Get-FileHash "$PSScriptRoot/meta-upstream/neoforge/files_manifests/$($_.longversion).json" -Algorithm SHA1 | Select-Object -ExpandProperty Hash
