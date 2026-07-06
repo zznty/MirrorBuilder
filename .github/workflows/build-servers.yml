@@ -91,6 +91,7 @@ jobs:
                   }
                 }
                 "version=$version" >> $env:GITHUB_OUTPUT
+                exit 0
 
             - name: Install Component
               if: ${{ steps.meta.outputs.version != steps.mirror.outputs.version }}
