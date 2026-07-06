@@ -6,6 +6,25 @@ New-Item -ItemType Directory $uid -Force | Out-Null
 
 $forgeVersions = Get-Content "$PSScriptRoot/meta-upstream/neoforge/derived_index.json" -Raw | ConvertFrom-Json -AsHashtable
 
+# NeoForge 26.x+ uses standalone versioning — mcversion removed from derived_index.
+# Backfill mcversion from version_manifests/{key}.json → inheritsFrom.
+foreach ($key in $forgeVersions.versions.Keys) {
+    $v = $forgeVersions.versions[$key]
+    if (-not $v.mcversion) {
+        $vmPath = "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$key.json"
+        if (Test-Path $vmPath) {
+            try {
+                $vm = Get-Content $vmPath -ErrorAction Stop | ConvertFrom-Json
+                $v.mcversion = $vm.inheritsFrom
+            } catch {
+                Write-Debug "Failed to read version_manifests for $key: $_"
+            }
+        } else {
+            Write-Debug "No version_manifests for $key"
+        }
+    }
+}
+
 foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
             $forgeParts = $_ -replace "_", "-" -split "-"
             try {
