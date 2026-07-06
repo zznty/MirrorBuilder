@@ -84,7 +84,12 @@ jobs:
                   $version = $null
                 }
                 else {
-                  $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy
+                  try {
+                    $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy 2>&1
+                  } catch {
+                    Write-Host "No existing profile found (this is expected for first build)"
+                    $version = $null
+                  }
                 }
                 "version=$version" >> $env:GITHUB_OUTPUT
 
