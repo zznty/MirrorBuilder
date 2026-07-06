@@ -9,7 +9,7 @@ on:
 env:
   LAUNCHER_VERSION: 5.6.x
   GH_TOKEN: ${{ github.token }}
-  META_URL: "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/meta/v1/servers-meta.zip"
+  META_URL: "https://zmirror.storage.yandexcloud.net/meta/v1/servers-meta.zip"
 
 name: Build Mirror Servers
 
@@ -18,6 +18,7 @@ jobs:
         runs-on: ubuntu-latest
         name: Build Server
         strategy:
+            fail-fast: false
             matrix:
                 version: ["1.16.5", "1.18.2", "1.19.2", "1.19.4", "1.20.1"]
                 component: ["net.minecraftforge", "io.izzel.arclight"]
@@ -49,10 +50,13 @@ jobs:
               shell: pwsh
               run: |
                 if ("${{ matrix.component }}" -eq "net.minecraftforge" -and "${{ matrix.version }}" -eq "1.16.5") {
-                  $version = "36.2.41" # https://github.com/RetroForge/MinecraftForge/releases/tag/36.2.41-1.16.5-patched1
+                  $version = "36.2.41"
+                }
+                elseif ("${{ matrix.component }}" -eq "io.izzel.arclight") {
+                  $version = ./installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }} --meta "${{ env.META_URL }}"
                 }
                 else {
-                  $version = ./installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }} --meta "${{ env.META_URL }}"
+                  $version = ./installutil component meta "${{ matrix.component }}" net.minecraft==${{ matrix.version }}
                 }
                 "version=$version" >> $env:GITHUB_OUTPUT
 
