@@ -84,10 +84,9 @@ jobs:
                   $version = $null
                 }
                 else {
-                  try {
-                    $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy 2>&1
-                  } catch {
-                    Write-Host "No existing profile found (this is expected for first build)"
+                  $version = ./installutil component profile $component "${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET }}/${{ env.LAUNCHER_VERSION }}/servers/${{ matrix.version }}-${{ steps.suffix.outputs.value }}.json" legacy
+                  if ($LASTEXITCODE -ne 0) {
+                    Write-Host "No existing profile found (expected for first build)"
                     $version = $null
                   }
                 }
