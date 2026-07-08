@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 $DebugPreference = 'Continue'
 
+Import-Module -Name "$PSScriptRoot\utils.psm1"
+
 $uid = "net.neoforged";
 New-Item -ItemType Directory $uid -Force | Out-Null
 
@@ -46,8 +48,7 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
     uid           = $uid;
     versions      = $forgeVersions.versions.Values | ForEach-Object {
         $rt = if (Test-Path "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" }
-        if ($rt) { $rt = $rt -replace '([-+])(\d):(\d{2})$', '${1}0${2}:${3}' }
-        if (-not $rt) { $rt = $null }
+        $rt = $rt | NormalizeTimestamp
         [PSCustomObject]@{
             releaseTime = $rt
             version     = $_.longversion
@@ -93,7 +94,7 @@ $forgeVersions.versions.GetEnumerator() | ForEach-Object {
         uid                  = $uid;
         version              = $forgeVersion.longversion;
         type                 = $versionInfo.type;
-        releaseTime          = $versionInfo.releaseTime;
+        releaseTime          = $versionInfo.releaseTime | NormalizeTimestamp;
         order                = 5;
         requires             = @(
             [PSCustomObject]@{
