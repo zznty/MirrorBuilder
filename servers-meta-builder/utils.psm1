@@ -59,4 +59,21 @@ function EmptyToNull {
     }
 }
 
-Export-ModuleMember -Function Get-JarManifest,Get-UpstreamComponent,EmptyToNull
+function NormalizeTimestamp {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        $Value
+    )
+    process {
+        if (-not $Value) { return $null }
+        try {
+            $dt = [DateTime]::Parse($Value, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal)
+            return $dt.ToString('yyyy-MM-ddTHH:mm:ssK')
+        } catch {
+            return $null
+        }
+    }
+}
+
+Export-ModuleMember -Function Get-JarManifest,Get-UpstreamComponent,EmptyToNull,NormalizeTimestamp
