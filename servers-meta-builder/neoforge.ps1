@@ -1,8 +1,6 @@
 $ErrorActionPreference = "Stop"
 $DebugPreference = 'Continue'
 
-function EmptyToNull($Value) { if ($Value) { $Value } else { $null } }
-
 $uid = "net.neoforged";
 New-Item -ItemType Directory $uid -Force | Out-Null
 
@@ -47,8 +45,10 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
     name          = "NeoForge";
     uid           = $uid;
     versions      = $forgeVersions.versions.Values | ForEach-Object {
+        $rt = if (Test-Path "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" }
+        if (-not $rt) { $rt = $null }
         [PSCustomObject]@{
-            releaseTime = (if (Test-Path "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/neoforge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" }) | ForEach-Object { if ($_) { $_ } else { $null } };
+            releaseTime = $rt
             version     = $_.longversion
             recommended = $_.recommended
             sha1        = Get-FileHash "$PSScriptRoot/meta-upstream/neoforge/files_manifests/$($_.longversion).json" -Algorithm SHA1 | Select-Object -ExpandProperty Hash
