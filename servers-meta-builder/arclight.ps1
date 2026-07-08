@@ -46,7 +46,7 @@ $arclightVersions = $arclightBranches.files | ForEach-Object {
     uid           = $uid;
     versions      = $arclightVersions | ForEach-Object {
         [PSCustomObject]@{
-            releaseTime = $_.'last-modified';
+            releaseTime = EmptyToNull $_.'last-modified';
             version     = $_.longVersion
             recommended = $false
             sha1        = $_.permlink -replace "^.*objects/", ""

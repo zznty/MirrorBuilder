@@ -4,6 +4,8 @@ $DebugPreference = 'Continue'
 $legacyVersions = "1.1", "1.2.3", "1.2.4", "1.2.5", "1.3.2", "1.4.1", "1.4.2", "1.4.3", "1.4.4", "1.4.5", "1.4.6", "1.4.7", "1.5", "1.5.1", "1.5.2", "1.6.1", "1.6.2", "1.6.3", "1.6.4", "1.7.10", "1.7.10-pre4", "1.7.2", "1.8", "1.8.8", "1.8.9", "1.9", "1.9.4", "1.10", "1.10.2", "1.11", "1.11.2", "1.12", "1.12.1", "1.12.2"
 $badVersions = @("1.12.2-14.23.5.2851")
 
+function EmptyToNull($Value) { if ($Value) { $Value } else { $null } }
+
 $uid = "net.minecraftforge";
 New-Item -ItemType Directory $uid -Force | Out-Null
 
@@ -36,7 +38,7 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
     uid           = $uid;
     versions      = $forgeVersions.versions.Values | ForEach-Object {
         [PSCustomObject]@{
-            releaseTime = if (Test-Path "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" };
+            releaseTime = EmptyToNull (if (Test-Path "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" });
             version     = $_.version
             recommended = $_.recommended
             sha1        = Get-FileHash "$PSScriptRoot/meta-upstream/forge/files_manifests/$($_.longversion).json" -Algorithm SHA1 | Select-Object -ExpandProperty Hash

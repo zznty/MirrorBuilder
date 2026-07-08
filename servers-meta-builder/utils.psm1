@@ -48,4 +48,15 @@ function Get-UpstreamComponent {
     Remove-Item -Path "meta-launcher-master","temp.zip" -Recurse -Force
 }
 
-Export-ModuleMember -Function Get-JarManifest,Get-UpstreamComponent
+function EmptyToNull {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        $Value
+    )
+    process {
+        if ($Value) { $Value } else { $null }
+    }
+}
+
+Export-ModuleMember -Function Get-JarManifest,Get-UpstreamComponent,EmptyToNull

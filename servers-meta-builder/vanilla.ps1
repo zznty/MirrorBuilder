@@ -24,7 +24,7 @@ $mojangVersions.versions = $mojangVersions.versions | Where-Object { $_.type -eq
     uid           = $uid;
     versions      = $mojangVersions.versions | ForEach-Object {
         [PSCustomObject]@{
-            releaseTime = $_.releaseTime;
+            releaseTime = EmptyToNull $_.releaseTime;
             version     = $_.id
             recommended = $_.id -eq $mojangVersions.latest.release
             sha1        = $_.url -match "/\b([a-f0-9]{40})\b/" ? $matches[1] : $null

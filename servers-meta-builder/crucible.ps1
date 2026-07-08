@@ -23,7 +23,7 @@ $crucibleVersions = gh release -R "CrucibleMC/Crucible" list --exclude-pre-relea
     uid           = $uid;
     versions      = $crucibleVersions | ForEach-Object {
         [PSCustomObject]@{
-            releaseTime = $_.publishedAt
+            releaseTime = EmptyToNull $_.publishedAt
             version     = $_.tagName -replace "v", ""
             recommended = $_.isLatest
         }
