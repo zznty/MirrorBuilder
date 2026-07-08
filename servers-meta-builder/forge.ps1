@@ -36,6 +36,7 @@ foreach ($badVersion in ($forgeVersions.versions.Keys | Where-Object {
     uid           = $uid;
     versions      = $forgeVersions.versions.Values | ForEach-Object {
         $rt = if (Test-Path "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json") { (Get-Content "$PSScriptRoot/meta-upstream/forge/version_manifests/$($_.longversion).json" | ConvertFrom-Json | Select-Object -ExpandProperty releaseTime) } else { "1970-01-01T00:00:00+00:00" }
+        if ($rt) { $rt = $rt -replace "([-+])\d:(\d{2})$", '${1}0${2}' }
         if (-not $rt) { $rt = $null }
         [PSCustomObject]@{
             releaseTime = $rt
